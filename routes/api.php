@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CourierController;
 use App\Http\Controllers\Api\CourrierController;
@@ -20,6 +21,22 @@ use Illuminate\Support\Facades\Route;
 // Auth Sanctum : le client connecté prime (parité requireClient session).
 
 Route::prefix('v1')->group(function (): void {
+
+    // ===== Section BE-AUTH (parité src/Controller/AuthController.php) =====
+    // Mêmes contrats JSON/codes HTTP que le PHP source ; sessions → tokens Sanctum.
+    Route::prefix('auth')->group(function (): void {
+        Route::post('/register', [AuthController::class, 'register']);
+        Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+        Route::post('/otp/verify', [AuthController::class, 'verifyOtp']);
+        Route::post('/password/reset', [AuthController::class, 'resetPassword']);
+        Route::get('/me', [AuthController::class, 'me']); // parité PHP : 200 {authenticated:false} si non connecté
+
+        Route::middleware('auth:sanctum')->group(function (): void {
+            Route::post('/logout', [AuthController::class, 'logout']);
+        });
+    });
+    // ===== Fin section BE-AUTH =====
 
     // Webhook Campay : serveur-à-serveur, signature HMAC vérifiée dans le contrôleur
     // (pas de middleware auth ; exempté CSRF par nature — API stateless).
