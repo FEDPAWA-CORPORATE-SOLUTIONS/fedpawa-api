@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CourierController;
@@ -98,6 +99,16 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->group(function (): void {
             Route::get('/admin/document-info', [StorageController::class, 'documentInfo']);
             Route::post('/admin/courrier/add', [CourrierController::class, 'add']);
+
+            // Dashboard admin (parité AdminController source, public/index.php
+            // lignes 75-76, 81-86) — listes, KPI, éditeur template L012, tickets
+            Route::get('/admin/lists', [AdminController::class, 'lists']);
+            Route::get('/admin/overview', [AdminController::class, 'overview']);
+            Route::get('/admin/template', [AdminController::class, 'getTemplate']);
+            Route::post('/admin/template/otp-request', [AdminController::class, 'templateOtpRequest']);
+            Route::post('/admin/template/otp-verify', [AdminController::class, 'templateOtpVerify']);
+            Route::post('/admin/template/update', [AdminController::class, 'updateTemplate']);
+            Route::post('/admin/ticket/reply', [AdminController::class, 'ticketReply']);
         });
     });
 

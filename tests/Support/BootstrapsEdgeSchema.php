@@ -54,5 +54,11 @@ trait BootstrapsEdgeSchema
             scan TEXT,
             statut TEXT DEFAULT \'non_lu\'
         )');
+
+        // Parité src/schema_sqlite.sql (tickets_support) : reponse/reponse_at
+        // absentes de la migration 020003 — ajoutées si la migration a déjà
+        // créé la table (CREATE IF NOT EXISTS ci-dessus ne s'applique alors pas).
+        $this->addColumnIfMissing('tickets_support', 'reponse', 'ALTER TABLE tickets_support ADD COLUMN reponse TEXT');
+        $this->addColumnIfMissing('tickets_support', 'reponse_at', 'ALTER TABLE tickets_support ADD COLUMN reponse_at DATETIME');
     }
 }
