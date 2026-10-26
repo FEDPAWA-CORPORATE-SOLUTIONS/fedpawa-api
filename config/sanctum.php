@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Audit FIX-SECURITY : expiration 72h (4320 min) — parité avec
+    // les sessions de 3 jours du PHP source.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 4320),
 
     /*
     |--------------------------------------------------------------------------
