@@ -36,6 +36,32 @@ use Illuminate\Support\Facades\Log;
  */
 class AuthController extends Controller
 {
+    /**
+     * Vérification de mot de passe multi-format (audit) : les admins seedés
+     * via le PHP source portent un hash argon2id ($argon2id$...) alors que le
+     * driver par défaut est bcrypt avec hashing.verify=true — Hash::check
+     * lève alors RuntimeException (=> 500 au login admin).
+     * On vérifie bcrypt d'abord (cas nominal), puis argon2id si le hash le
+     * demande, via password_verify() natif qui gère les deux algorithmes.
+     */
+    private static function passwordMatches(string $plain, ?string $stored): bool
+    {
+        if ($stored === null || $stored === '') {
+            return false;
+        }
+        if (str_starts_with($stored, '$argon2')) {
+            // Hash argon2id : le driver bcrypt configurerait une RuntimeException
+            // (verify=true). password_verify() natif supporte tous les formats.
+            return password_verify($plain, $stored);
+        }
+        try {
+            return Hash::check($plain, $stored);
+        } catch (\RuntimeException $e) {
+            // Cas limite : hash non bcrypt mais sans préfixe argon2 reconnu.
+            return password_verify($plain, $stored);
+        }
+    }
+
     // ------------------------------------------------------------------
     // Client : inscription
     // ------------------------------------------------------------------
@@ -90,7 +116,7 @@ class AuthController extends Controller
             // 1) Compte admin ? — message dédié, AUCUN échec throttle (parité PHP)
             $admin = Admin::where('email', $email)->first();
             if ($admin) {
-                if (! Hash::check($input['mot_de_passe'], $admin->mot_de_passe)) {
+                if (! self::passwordMatches($input['mot_de_passe'], $admin->mot_de_passe)) {
                     return response()->json([
                         'error' => 'Ceci est un compte administrateur. Utilisez la page d\'accès admin: /admin_dashboard.html',
                     ], 401);
@@ -117,7 +143,7 @@ class AuthController extends Controller
 
             // 3) Vérification des identifiants client
             $client = Client::where('email', $email)->first();
-            if (! $client || ! Hash::check($input['mot_de_passe'], $client->mot_de_passe)) {
+            if (! $client || ! self::passwordMatches($input['mot_de_passe'], $client->mot_de_passe)) {
                 $justLocked = LoginThrottleService::recordFailure($email, 'client', $ip);
                 if ($justLocked) {
                     AuditService::log('LOGIN_LOCKED', null, 'client', "Client $email verrouillé après 5 échecs (30 min)");

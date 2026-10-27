@@ -26,6 +26,10 @@ class SouscriptionTunnelTest extends TestCase
 
     public function test_etape1_souscription_cree_abonnement_et_paiement_en_attente(): void
     {
+        // Mode démo explicite (audit) : l'OTP n'est exposé dans le JSON QUE si
+        // APP_DEBUG + FEDPAWA_DEMO_MODE=true (tests e2e). Cf. AuditFixesTest
+        // pour l'assertion inverse (OTP absent par défaut).
+        Config::set('fedpawa.FEDPAWA_DEMO_MODE', '1');
         ['id' => $clientId, 'user' => $user] = $this->businessClient('tunnel1@example.com');
 
         $response = $this->actingAs($user)->postJson('/api/v1/souscription', [

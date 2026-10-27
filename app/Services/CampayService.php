@@ -37,6 +37,24 @@ class CampayService
         $this->permanentToken = $tok !== '' ? $tok : null;
     }
 
+    /**
+     * Campay réellement configuré ? (audit) : sans token permanent ni
+     * identifiants explicites, tout appel API échoue (credentials par défaut
+     * « test_user »). Permet aux contrôleurs de dégrader proprement au lieu
+     * d'un 500 avec trace.
+     */
+    public function isConfigured(): bool
+    {
+        if ($this->permanentToken !== null) {
+            return true;
+        }
+
+        // Identifiants explicites requis : les valeurs par défaut du service
+        // ne sont que des placeholders de parité, jamais de vrais credentials.
+        return $this->username !== '' && $this->username !== 'test_user'
+            && $this->password !== '' && $this->password !== 'test_pass';
+    }
+
     private function log(string $message): void
     {
         try {

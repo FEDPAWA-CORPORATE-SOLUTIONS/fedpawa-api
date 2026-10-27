@@ -16,6 +16,7 @@ use App\Services\PdfService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -32,6 +33,18 @@ class SouscriptionController extends Controller
         private CampayService $campay,
         private NotificationService $notifier,
     ) {}
+
+    /**
+     * Mode démo explicite : l'OTP n'est exposé dans la réponse JSON QUE si
+     * APP_DEBUG est actif ET FEDPAWA_DEMO_MODE=true (tests e2e). Le mode
+     * reste opt-in via la config : config('fedpawa.FEDPAWA_DEMO_MODE') ou
+     * env FEDPAWA_DEMO_MODE prévalent sur l'env brut.
+     */
+    private static function demoMode(): bool
+    {
+        return (bool) config('app.debug')
+            && FedpawaConfig::bool('FEDPAWA_DEMO_MODE', false);
+    }
 
     /** POST /api/v1/souscription — initialise souscription + paiement Campay. */
     public function process(SouscriptionStoreRequest $request): JsonResponse
@@ -57,6 +70,14 @@ class SouscriptionController extends Controller
             // 2. Initier le paiement Campay (ou mode démo si CAMPAY_ENABLED=0)
             $campayEnabled = FedpawaConfig::bool('CAMPAY_ENABLED', true);
             $transactionId = null;
+            if ($campayEnabled && ! $this->campay->isConfigured()) {
+                // Audit : CAMPAY_ENABLED actif mais aucun credential Campay
+                // => dégradation explicite, pas un 500 avec trace.
+                return response()->json([
+                    'status' => 'payment_unavailable',
+                    'error' => "Le service de paiement Campay n'est pas configuré. Contactez le support (CAMPAY_TOKEN ou CAMPAY_USER/CAMPAY_PASSWORD manquants).",
+                ], 503);
+            }
             if ($campayEnabled) {
                 try {
                     $payment = $this->campay->collect((float) $input['prix'], (string) ($input['telephone'] ?? ''), 'SUB_'.$sub['subscription_id']);
@@ -85,19 +106,35 @@ class SouscriptionController extends Controller
             ]);
 
             // 4. Générer l'OTP pour la signature.
-            // NOTE (démo) : aucun SMS/e-mail n'est configuré, l'OTP est donc
-            // renvoyé dans la réponse pour permettre de tester le flux (parité).
+            // Sécurité (audit) : l'OTP ne part QUE par e-mail (en dev, SMTP non
+            // configuré => il est tracé dans la log, parité [OTP-DEV] du reset
+            // password). Il n'apparaît dans la réponse JSON QUE si le mode démo
+            // est explicitement activé (APP_DEBUG + FEDPAWA_DEMO_MODE=true).
             $otp = OtpService::generate($sub['client_id']);
+            $clientEmail = (string) ($input['email'] ?? $user->email);
+            $otpDelivered = false;
+            try {
+                $otpDelivered = $this->notifier->sendSignatureOtp($clientEmail, $otp);
+            } catch (\Throwable $mailEx) {
+                report($mailEx);
+            }
+            if (! $otpDelivered) {
+                Log::info("[OTP-SIGN] code pour {$clientEmail} : {$otp}");
+            }
 
             AuditLogger::log('SUBSCRIPTION_INIT', $sub['client_id'], 'client', 'Sub ID: '.$sub['subscription_id']);
 
-            return response()->json([
+            $payload = [
                 'status' => 'payment_pending',
                 'transaction_id' => $transactionId,
                 'subscription_id' => $sub['subscription_id'],
                 'client_id' => $sub['client_id'],
-                'signature_otp' => $otp,
-            ]);
+            ];
+            if (self::demoMode()) {
+                $payload['signature_otp'] = $otp;
+            }
+
+            return response()->json($payload);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
@@ -211,6 +248,14 @@ class SouscriptionController extends Controller
             $campayEnabled = FedpawaConfig::bool('CAMPAY_ENABLED', true);
             $statut = 'en_attente';
             $transactionId = (string) ($pay->transaction_id ?? '');
+
+            if ($campayEnabled && ! $this->campay->isConfigured()) {
+                // Audit : CAMPAY_ENABLED actif mais aucun credential Campay
+                // (token ni user/password) => dégradation explicite, pas un 500.
+                return response()->json([
+                    'error' => "Le service de paiement Campay n'est pas configuré. Contactez le support (CAMPAY_TOKEN ou CAMPAY_USER/CAMPAY_PASSWORD manquants).",
+                ], 503);
+            }
 
             if ($campayEnabled && $transactionId !== '') {
                 // Production : statut réel côté Campay

@@ -65,7 +65,16 @@ class NotificationService
         return $this->send(
             $email,
             'Votre code de réinitialisation FEDPAWA',
-            'Votre code de réinitialisation est : <strong>'.htmlspecialchars($code)."</strong><br>Il expire dans 15 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+            'Votre code de réinitialisation est : <strong>'.htmlspecialchars($code)."</strong><br>Il expire dans 15 minutes. Si n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+        );
+    }
+
+    public function sendSignatureOtp(string $email, string $code): bool
+    {
+        return $this->send(
+            $email,
+            'Votre code de signature FEDPAWA',
+            'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
         );
     }
 }
