@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
         ]);
+
+        // Honeypot contact : le middleware global TrimStrings vidait
+        // site='   ' → '' AVANT le contrôleur (empty('') = false côté
+        // contrôleur devient inutilisable ; ligne insérée en base au lieu
+        // du refus silencieux legacy). 'site' doit arriver brut.
+        $middleware->trimStrings(except: ['site']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Tests-supervisors (BUG-1, 3× signalé) : toute requête API non authentifiée

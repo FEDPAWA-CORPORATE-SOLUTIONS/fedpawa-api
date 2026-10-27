@@ -35,7 +35,11 @@ class ContactController extends Controller
 
         try {
             // Anti-spam honeypot : même réponse de succès, aucune insertion.
-            if (! empty($data['site'])) {
+            // Parité source !empty($site) : en PHP empty(' ') === false,
+            // donc TOUT site non vide (y compris espaces seuls) est refusé
+            // silencieusement. TrimStrings exclut 'site' (bootstrap) pour
+            // que les espaces arrivent intacts jusqu'ici.
+            if (($data['site'] ?? '') !== '') {
                 return response()->json(['message' => 'Merci ! Votre message a bien été envoyé.']);
             }
 

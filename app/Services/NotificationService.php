@@ -77,4 +77,20 @@ class NotificationService
             'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
         );
     }
+
+    /**
+     * Parité src/Service/NotificationService.php::sendContactNotification :
+     * mail admin « Nouveau message de contact — <sujet> » avec nom, e-mail,
+     * téléphone et corps du message (échappés + nl2br).
+     */
+    public function sendContactNotification(string $dest, string $sujet, string $nom, string $email, string $telephone, string $message): bool
+    {
+        return $this->send(
+            $dest,
+            'Nouveau message de contact — '.$sujet,
+            'Nom : '.htmlspecialchars($nom).'<br>E-mail : '.htmlspecialchars($email).
+            '<br>Téléphone : '.htmlspecialchars($telephone).
+            '<br><br>'.nl2br(htmlspecialchars($message))
+        );
+    }
 }

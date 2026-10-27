@@ -8,6 +8,12 @@ use Illuminate\Foundation\Http\FormRequest;
  * Parité de POST /api/kyc/submit (dashboard.js) :
  * piece_identite + justificatif_domicile requis, PDF/JPEG/PNG, max 10 Mo
  * (règles affichées par le tunnel étape 3 : PDF, PNG, JPG - Max 10 Mo).
+ *
+ * NOTE 413 : au-delà de cette validation, la limite physique est celle du
+ * serveur PHP (upload_max_filesize / post_max_size — Docker : 2M/8M par
+ * défaut, aligné sur 25M via conf.d/zz-fedpawa-uploads.ini). Un body plus
+ * gros que post_max_size est rejeté AVANT Laravel (413 brut) ; sous cette
+ * limite, la règle max:10240 ci-dessous renvoie le 422 métier.
  */
 class KycSubmitRequest extends FormRequest
 {
