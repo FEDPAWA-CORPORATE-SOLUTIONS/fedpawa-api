@@ -2,15 +2,21 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 /**
  * Parité de src/Service/NotificationService.php : SMTP non configuré
  * => pas d'envoi (dégradation gracieuse, parité isConfigured()).
  * En Laravel : MAIL_MAILER smtp + host réel requis, sinon log silencieux.
+ *
+ * Push PWA : sendRenewalReminder crée aussi l'événement in-app
+ * (type abonnement « Renouvellement proche ») — ancrage du cron legacy.
  */
 class NotificationService
 {
+    public function __construct(private PushService $push) {}
+
     private function isConfigured(): bool
     {
         $host = (string) config('mail.host', '');
@@ -44,6 +50,19 @@ class NotificationService
 
     public function sendRenewalReminder(string $email, string $clientName): bool
     {
+        // Push PWA : ancrage cron legacy — événement in-app type abonnement.
+        // Best-effort : e-mail sans client connu ne crée rien.
+        $client = DB::table('clients')->where('email', $email)->first();
+        if ($client) {
+            $this->push->sendToClient(
+                (int) $client->id,
+                'abonnement',
+                'Renouvellement proche',
+                'Bonjour '.htmlspecialchars($clientName).', votre abonnement expire bientôt. Pensez à le renouveler.',
+                '/espace-client?tab=abonnements'
+            );
+        }
+
         return $this->send(
             $email,
             'Rappel: Votre abonnement',

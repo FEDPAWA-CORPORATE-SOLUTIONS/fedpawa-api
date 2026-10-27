@@ -11,6 +11,7 @@ use App\Services\CampayService;
 use App\Services\FactureService;
 use App\Services\FedpawaConfig;
 use App\Services\NotificationService;
+use App\Services\PushService;
 use App\Services\OtpService;
 use App\Services\PdfService;
 use App\Services\SubscriptionService;
@@ -32,6 +33,7 @@ class SouscriptionController extends Controller
         private PdfService $pdfService,
         private CampayService $campay,
         private NotificationService $notifier,
+        private PushService $push,
     ) {}
 
     /**
@@ -200,6 +202,15 @@ class SouscriptionController extends Controller
 
                 $this->notifier->sendWelcomeEmail($sub->email, $sub->nom);
 
+                // Push PWA : contrat prêt (signature domiciliation complétée)
+                $this->push->sendToClient(
+                    $clientId,
+                    'systeme',
+                    'Votre contrat est prêt',
+                    'Votre contrat de domiciliation a été signé et est disponible dans votre espace client.',
+                    '/espace-client?tab=documents'
+                );
+
                 OtpService::clear($clientId);
                 AuditLogger::log('SUBSCRIPTION_FINALIZED', $clientId, 'client', 'Sub ID: '.$sub->id.' (contrat domiciliation)');
 
@@ -278,6 +289,25 @@ class SouscriptionController extends Controller
                     FactureService::createForPayment($clientId, (float) $sub->prix, $transactionId);
                 } catch (\Exception $fe) {
                     report($fe);
+                }
+
+                // Push PWA : facture disponible + abonnement activé (une seule fois
+                // par transition en_attente -> recu)
+                if (! $pay || $pay->statut !== 'recu') {
+                    $this->push->sendToClient(
+                        $clientId,
+                        'facture',
+                        'Votre facture est disponible',
+                        'Votre paiement a été confirmé. La facture est disponible dans votre espace client.',
+                        '/espace-client?tab=factures'
+                    );
+                    $this->push->sendToClient(
+                        $clientId,
+                        'abonnement',
+                        'Abonnement activé',
+                        "Votre abonnement « {$sub->pack} » est actif.",
+                        '/espace-client?tab=abonnements'
+                    );
                 }
             }
 

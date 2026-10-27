@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\KycController;
 use App\Http\Controllers\Api\MailController;
+use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\SupportController;
@@ -42,6 +43,22 @@ Route::prefix('v1')->group(function (): void {
     // Webhook Campay : serveur-à-serveur, signature HMAC vérifiée dans le contrôleur
     // (pas de middleware auth ; exempté CSRF par nature — API stateless).
     Route::post('/webhooks/campay', [WebhookController::class, 'handleCampay']);
+
+    // ===== Section PUSH PWA =====
+    // VAPID public : la clé publique n'est pas un secret (le PWA en a besoin
+    // avant login pour PushManager.subscribe) — PUBLIC, sans auth.
+    Route::get('/push/vapid', [PushController::class, 'vapid']);
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/push/subscribe', [PushController::class, 'subscribe']);
+        Route::post('/push/unsubscribe', [PushController::class, 'unsubscribe']);
+
+        // Notifications in-app du client (20/page, ?unread=1)
+        Route::get('/notifications', [PushController::class, 'notifications']);
+        Route::post('/notifications/read', [PushController::class, 'read']);
+    });
+    // ===== Fin section PUSH PWA =====
+
 
     Route::middleware('auth:sanctum')->group(function (): void {
         // Tunnel souscription (flux le plus critique)

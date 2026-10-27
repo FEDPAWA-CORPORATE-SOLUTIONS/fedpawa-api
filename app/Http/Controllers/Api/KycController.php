@@ -7,6 +7,7 @@ use App\Http\Requests\KycDecisionRequest;
 use App\Http\Requests\KycSubmitRequest;
 use App\Services\AuditLogger;
 use App\Services\KycService;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  */
 class KycController extends Controller
 {
-    public function __construct(private KycService $service) {}
+    public function __construct(private KycService $service, private PushService $push) {}
 
     /** POST /api/v1/kyc/submit */
     public function submit(KycSubmitRequest $request): JsonResponse
@@ -64,6 +65,28 @@ class KycController extends Controller
                 return response()->json(['error' => 'Dossier KYC introuvable'], 404);
             }
             AuditLogger::log($auditAction, $id, 'admin', 'KYC ID: '.$id);
+
+            // Push PWA : notifier le propriétaire du dossier
+            $kyc = DB::table('kyc')->where('id', $id)->first();
+            if ($kyc && $kyc->client_id) {
+                if ($statut === 'approuvé') {
+                    $this->push->sendToClient(
+                        (int) $kyc->client_id,
+                        'kyc',
+                        'Vos documents KYC sont validés',
+                        'Votre dossier KYC a été approuvé par notre équipe.',
+                        '/espace-client?tab=kyc'
+                    );
+                } else {
+                    $this->push->sendToClient(
+                        (int) $kyc->client_id,
+                        'kyc',
+                        'Documents KYC à corriger',
+                        'Votre dossier KYC a été rejeté. Merci de soumettre des documents corrigés.',
+                        '/espace-client?tab=kyc'
+                    );
+                }
+            }
 
             return response()->json(['message' => $message]);
         } catch (\Exception $e) {

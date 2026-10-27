@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CourrierAddRequest;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  */
 class CourrierController extends Controller
 {
+    public function __construct(private PushService $push) {}
+
     /** GET /api/v1/courriers */
     public function index(Request $request): JsonResponse
     {
@@ -48,12 +51,22 @@ class CourrierController extends Controller
         }
 
         try {
+            $clientId = (int) $request->validated('client_id');
             DB::table('courriers')->insert([
-                'client_id' => (int) $request->validated('client_id'),
+                'client_id' => $clientId,
                 'date_reception' => now()->format('Y-m-d H:i:s'),
                 'scan' => $request->validated('scan_path'),
                 'statut' => 'non_lu',
             ]);
+
+            // Push PWA : nouveau courrier disponible pour ce client
+            $this->push->sendToClient(
+                $clientId,
+                'courrier',
+                'Nouveau courrier disponible',
+                'Un nouveau courrier vous attend dans votre espace client.',
+                '/espace-client?tab=courriers'
+            );
 
             return response()->json(['message' => 'Courrier ajouté']);
         } catch (\Throwable $e) {

@@ -9,6 +9,7 @@ use App\Http\Requests\TicketReplyRequest;
 use App\Mail\OtpMail;
 use App\Services\AuditLogger;
 use App\Services\OtpService;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -38,6 +39,8 @@ class AdminController extends Controller
     private const UNLOCK_TTL = 600;
 
     private const OTP_MAX_ATTEMPTS = 5;
+
+    public function __construct(private PushService $push) {}
 
     // =========================================================
     // GET /api/v1/admin/lists — listes enrichies (Lane audit + L011)
@@ -388,6 +391,18 @@ class AdminController extends Controller
 
             if ($updated === 0) {
                 return response()->json(['error' => 'Ticket introuvable'], 404);
+            }
+
+            // Push PWA : réponse à votre ticket
+            $ticket = DB::table('tickets_support')->where('id', $ticketId)->first();
+            if ($ticket && $ticket->client_id) {
+                $this->push->sendToClient(
+                    (int) $ticket->client_id,
+                    'ticket',
+                    'Réponse à votre ticket',
+                    'Notre équipe a répondu à votre demande de support.',
+                    '/espace-client?tab=support'
+                );
             }
 
             return response()->json(['message' => 'Réponse enregistrée']);
