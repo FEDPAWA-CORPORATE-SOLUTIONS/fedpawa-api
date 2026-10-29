@@ -20,7 +20,7 @@ class PushService
     private const TTL = 86400;
 
     /** Types valides (colonne notification_events.type). */
-    private const TYPES = ['facture', 'courrier', 'kyc', 'ticket', 'abonnement', 'systeme'];
+    public const TYPES = ['facture', 'courrier', 'kyc', 'ticket', 'abonnement', 'systeme'];
 
     public function sendToClient(int $clientId, string $type, string $title, string $body, ?string $url = null): void
     {
@@ -77,9 +77,33 @@ class PushService
         }
     }
 
-    /** Upsert d'une souscription (clé naturelle : endpoint unique). */
-    public function upsertSubscription(int $clientId, string $endpoint, string $p256dh, string $auth): void
+    /**
+     * Upsert d'une souscription (clé naturelle : endpoint unique).
+     *
+     * Anti-IDOR : l'endpoint est unique globalement, mais il n'appartient
+     * qu'à UN client. On refuse d'écraser la ligne d'un autre compte avec
+     * des clés différentes (divertissement / coupure des notifications d'un
+     * tiers). Seul le même navigateur — même endpoint ET mêmes clés de
+     * souscription, donc même service worker — peut changer de propriétaire
+     * (cas légitime : deux comptes sur le même poste).
+     *
+     * @return bool true = enregistrée ; false = endpoint détenu par un autre compte
+     */
+    public function upsertSubscription(int $clientId, string $endpoint, string $p256dh, string $auth): bool
     {
+        $existing = DB::table('push_subscriptions')->where('endpoint', $endpoint)->first();
+
+        if ($existing && (int) $existing->client_id !== $clientId) {
+            $sameBrowser = hash_equals((string) $existing->p256dh, $p256dh)
+                && hash_equals((string) $existing->auth, $auth);
+
+            if (! $sameBrowser) {
+                Log::warning("PushService: souscription d'un autre client refusée (client {$clientId})");
+
+                return false;
+            }
+        }
+
         DB::table('push_subscriptions')->updateOrInsert(
             ['endpoint' => $endpoint],
             [
@@ -90,11 +114,21 @@ class PushService
                 'created_at' => now()->format('Y-m-d H:i:s'),
             ]
         );
+
+        return true;
     }
 
-    public function deleteSubscription(string $endpoint): int
+    /**
+     * Suppression D'UNE souscription du client courant (anti-IDOR : le
+     * client_id est dans le WHERE, un compte ne peut pas supprimer la
+     * souscription d'un autre).
+     */
+    public function deleteSubscription(int $clientId, string $endpoint): int
     {
-        return DB::table('push_subscriptions')->where('endpoint', $endpoint)->delete();
+        return DB::table('push_subscriptions')
+            ->where('client_id', $clientId)
+            ->where('endpoint', $endpoint)
+            ->delete();
     }
 
     public function purgeEndpoint(string $endpoint): void

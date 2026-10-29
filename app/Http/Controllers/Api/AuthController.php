@@ -18,6 +18,7 @@ use App\Services\LoginThrottleService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -212,10 +213,29 @@ class AuthController extends Controller
 
         $client = Client::where('email', $user->email)->first();
 
+        // Parité public/index.php (route /api/me) : le client connecté reçoit
+        // aussi 'email' et 'kyc_status' = statut du DERNIER dossier KYC
+        // (null si jamais soumis). Le tunnel s'en sert pour sauter l'étape
+        // KYC d'un client déjà vérifié. Dégradation gracieuse (null) si la
+        // table kyc est absente — même comportement que le legacy.
+        $kycStatus = null;
+        if ($client) {
+            try {
+                $kycStatus = DB::table('kyc')
+                    ->where('client_id', $client->id)
+                    ->orderByDesc('id')
+                    ->value('statuts') ?: null;
+            } catch (\Throwable $kycErr) {
+                $kycStatus = null;
+            }
+        }
+
         return response()->json([
             'authenticated' => true,
             'role' => (string) ($client->role ?? 'client'),
             'name' => (string) ($client->nom ?? $user->name),
+            'email' => (string) ($client->email ?? $user->email),
+            'kyc_status' => $kycStatus,
         ], 200);
     }
 

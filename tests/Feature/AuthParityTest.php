@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\Client;
 use App\Models\PasswordReset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -118,6 +119,8 @@ class AuthParityTest extends TestCase
                 'authenticated' => true,
                 'role' => 'client',
                 'name' => 'Jean Dupont',
+                'email' => 'jean@fedpawa.test',
+                'kyc_status' => null,
             ]);
     }
 
@@ -251,6 +254,8 @@ class AuthParityTest extends TestCase
                 'authenticated' => true,
                 'role' => 'client',
                 'name' => 'Jean Dupont',
+                'email' => 'jean@fedpawa.test',
+                'kyc_status' => null,
             ]);
 
         // Logout révoque le token courant : /me redevient anonyme, /logout 401
@@ -275,6 +280,28 @@ class AuthParityTest extends TestCase
     public function test_logout_sans_token_401(): void
     {
         $this->postJson('/api/v1/auth/logout')->assertStatus(401);
+    }
+
+    /**
+     * /me expose email + kyc_status (parité public/index.php /api/me) : le
+     * statut du DERNIER dossier KYC, sinon null. Le tunnel saute l'étape KYC
+     * sur cette valeur — sans elle, un client vérifié devait re-téléverser.
+     */
+    public function test_me_expose_email_et_dernier_kyc_status(): void
+    {
+        $login = $this->postJson('/api/v1/auth/login', $this->premiereConnexion());
+        $clientId = (int) Client::where('email', 'jean@fedpawa.test')->value('id');
+
+        DB::table('kyc')->insert([
+            ['client_id' => $clientId, 'statuts' => 'en_cours'],
+            ['client_id' => $clientId, 'statuts' => 'valide'],
+        ]);
+
+        $this->withToken($login->json('token'))
+            ->getJson('/api/v1/auth/me')
+            ->assertStatus(200)
+            ->assertJsonPath('email', 'jean@fedpawa.test')
+            ->assertJsonPath('kyc_status', 'valide');
     }
 
     // ------------------------------------------------------------------

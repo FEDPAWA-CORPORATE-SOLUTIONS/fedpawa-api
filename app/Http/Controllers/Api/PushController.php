@@ -8,6 +8,8 @@ use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * Push PWA :
@@ -29,12 +31,18 @@ class PushController extends Controller
             return response()->json(['error' => 'Client introuvable'], 404);
         }
 
-        $this->push->upsertSubscription(
+        $ok = $this->push->upsertSubscription(
             $clientId,
             (string) $request->validated('endpoint'),
             (string) $request->validated('keys.p256dh'),
             (string) $request->validated('keys.auth')
         );
+
+        if (! $ok) {
+            return response()->json([
+                'error' => 'Cette souscription appartient à un autre compte',
+            ], 409);
+        }
 
         return response()->json(['message' => 'Souscription enregistrée']);
     }
@@ -42,11 +50,17 @@ class PushController extends Controller
     /** POST /api/v1/push/unsubscribe (auth:sanctum) */
     public function unsubscribe(Request $request): JsonResponse
     {
+        $clientId = $this->clientId($request);
+        if ($clientId === null) {
+            return response()->json(['error' => 'Client introuvable'], 404);
+        }
+
         $validated = $request->validate([
             'endpoint' => ['required', 'string', 'max:2048'],
         ]);
 
-        $this->push->deleteSubscription((string) $validated['endpoint']);
+        // Suppression scopée : un compte ne peut retirer que SES souscriptions.
+        $this->push->deleteSubscription($clientId, (string) $validated['endpoint']);
 
         return response()->json(['message' => 'Souscription supprimée']);
     }
@@ -101,11 +115,23 @@ class PushController extends Controller
             return response()->json(['error' => 'Client introuvable'], 404);
         }
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'ids' => ['array'],
             'ids.*' => ['integer', 'min:1'],
+            // Le front marque lues les notifications d'un onglet (?tab=) par
+            // type : sans 'types', ce marquage répondait 400 et ne faisait rien.
+            'types' => ['array'],
+            'types.*' => ['string', Rule::in(PushService::TYPES)],
             'all' => ['boolean'],
         ]);
+
+        // Convention du repo : validation invalide -> 400 {error} (jamais 422).
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 400);
+        }
+
+        /** @var array<string, mixed> $validated */
+        $validated = $validator->validated();
 
         $query = DB::table('notification_events')
             ->where('client_id', $clientId)
@@ -113,10 +139,16 @@ class PushController extends Controller
 
         if (! ($validated['all'] ?? false)) {
             $ids = array_map('intval', $validated['ids'] ?? []);
-            if ($ids === []) {
-                return response()->json(['error' => 'ids ou all requis'], 400);
+            $types = array_values(array_unique(array_map('strval', $validated['types'] ?? [])));
+
+            if ($ids !== []) {
+                $query->whereIn('id', $ids);
+            } elseif ($types !== []) {
+                // Toujours scopé au client : un type ne franchit pas les comptes.
+                $query->whereIn('type', $types);
+            } else {
+                return response()->json(['error' => 'ids, types ou all requis'], 400);
             }
-            $query->whereIn('id', $ids);
         }
 
         $count = $query->update(['read_at' => now()->format('Y-m-d H:i:s')]);

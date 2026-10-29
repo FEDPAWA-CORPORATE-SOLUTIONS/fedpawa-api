@@ -268,6 +268,95 @@ class PushNotificationTest extends TestCase
         $svc->sendToClient(1, 'invalide', 'T', 'B', null);
     }
 
+    /**
+     * ANTI-IDOR : un compte ne peut PAS écraser la souscription d'un autre en
+     * rejouant son endpoint avec des clés différentes -> 409, ligne intacte.
+     */
+    public function test_subscribe_refuse_endpoint_d_un_autre_client(): void
+    {
+        ['user' => $userA, 'id' => $idA] = $this->businessClient('push-idor-a@example.com');
+        ['user' => $userB, 'id' => $idB] = $this->businessClient('push-idor-b@example.com');
+
+        $payloadB = $this->subPayload();
+        $this->actingAs($userB)->postJson('/api/v1/push/subscribe', $payloadB)->assertStatus(200);
+
+        $payloadA = $this->subPayload();
+        $payloadA['endpoint'] = $payloadB['endpoint']; // même endpoint, clés de A
+        $this->actingAs($userA)->postJson('/api/v1/push/subscribe', $payloadA)
+            ->assertStatus(409)->assertJsonStructure(['error']);
+
+        $this->assertDatabaseHas('push_subscriptions', [
+            'endpoint' => $payloadB['endpoint'],
+            'client_id' => $idB,
+        ]);
+        $this->assertSame(0, DB::table('push_subscriptions')->where('client_id', $idA)->count());
+    }
+
+    /** Même navigateur (endpoint ET clés identiques) : transfert légitime. */
+    public function test_subscribe_transfere_la_souscription_du_meme_navigateur(): void
+    {
+        ['user' => $userA] = $this->businessClient('push-sw-a@example.com');
+        ['user' => $userB, 'id' => $idB] = $this->businessClient('push-sw-b@example.com');
+
+        $payload = $this->subPayload();
+        $this->actingAs($userA)->postJson('/api/v1/push/subscribe', $payload)->assertStatus(200);
+        $this->actingAs($userB)->postJson('/api/v1/push/subscribe', $payload)->assertStatus(200);
+
+        $this->assertDatabaseHas('push_subscriptions', [
+            'endpoint' => $payload['endpoint'],
+            'client_id' => $idB,
+        ]);
+        $this->assertSame(1, DB::table('push_subscriptions')->count());
+    }
+
+    /** ANTI-IDOR : l'unsubscribe d'un autre compte ne supprime rien. */
+    public function test_unsubscribe_ne_supprime_pas_la_souscription_d_un_autre(): void
+    {
+        ['user' => $userA] = $this->businessClient('push-del-a@example.com');
+        ['user' => $userB, 'id' => $idB] = $this->businessClient('push-del-b@example.com');
+
+        $payload = $this->subPayload();
+        $this->actingAs($userB)->postJson('/api/v1/push/subscribe', $payload)->assertStatus(200);
+
+        $this->actingAs($userA)
+            ->postJson('/api/v1/push/unsubscribe', ['endpoint' => $payload['endpoint']])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('push_subscriptions', [
+            'endpoint' => $payload['endpoint'],
+            'client_id' => $idB,
+        ]);
+    }
+
+    /** read {types} : marque lues CES types, pour le client courant uniquement. */
+    public function test_read_par_types_marque_uniquement_les_types_demandes(): void
+    {
+        ['user' => $userA, 'id' => $idA] = $this->businessClient('push-types-a@example.com');
+        ['user' => $userB, 'id' => $idB] = $this->businessClient('push-types-b@example.com');
+
+        $svc = $this->app->make(PushService::class);
+        $svc->sendToClient($idA, 'courrier', 'C1', 'b', null);
+        $svc->sendToClient($idA, 'facture', 'F1', 'b', null);
+        $svc->sendToClient($idB, 'courrier', 'C2', 'b', null);
+
+        $this->actingAs($userA)->postJson('/api/v1/notifications/read', ['types' => ['courrier']])
+            ->assertStatus(200)->assertJson(['marked' => 1]);
+
+        // A : courrier lu, facture non lue (1 restante) ; B : son courrier intact.
+        $this->assertSame(1, $this->actingAs($userA)->getJson('/api/v1/notifications?unread=1')->json('meta.total'));
+        $this->assertSame(1, $this->actingAs($userB)->getJson('/api/v1/notifications?unread=1')->json('meta.total'));
+    }
+
+    /** read {types} avec un type inconnu -> 400 (convention API, jamais 422). */
+    public function test_read_type_invalide_400(): void
+    {
+        ['user' => $user] = $this->businessClient('push-types-c@example.com');
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/notifications/read', ['types' => ['invalide']])
+            ->assertStatus(400)->assertJsonStructure(['error']);
+    }
+
     private function subPayload(): array
     {
         return [
