@@ -34,8 +34,13 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/password/reset', [AuthController::class, 'resetPassword']);
         Route::get('/me', [AuthController::class, 'me']); // parité PHP : 200 {authenticated:false} si non connecté
 
+        // Vérification e-mail (CONTRAT-VERIF.md) : PUBLIC, pas d'auth requise
+        Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+
         Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('/logout', [AuthController::class, 'logout']);
+            // Renvoi du lien de vérification : auth requise, throttle 60 s côté contrôleur
+            Route::post('/resend-verification', [AuthController::class, 'resendVerification']);
         });
     });
     // ===== Fin section BE-AUTH =====
@@ -50,7 +55,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/push/vapid', [PushController::class, 'vapid']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
-        Route::post('/push/subscribe', [PushController::class, 'subscribe']);
+        Route::post('/push/subscribe', [PushController::class, 'subscribe'])->middleware('email_verified');
         Route::post('/push/unsubscribe', [PushController::class, 'unsubscribe']);
 
         // Notifications in-app du client (20/page, ?unread=1)
@@ -65,10 +70,10 @@ Route::prefix('v1')->group(function (): void {
 
 
     Route::middleware('auth:sanctum')->group(function (): void {
-        // Tunnel souscription (flux le plus critique)
-        Route::post('/souscription', [SouscriptionController::class, 'process']);
-        Route::post('/signature', [SouscriptionController::class, 'finalize']);
-        Route::post('/paiement/verifier', [SouscriptionController::class, 'verifyPayment']);
+        // Tunnel souscription (flux le plus critique) — gating e-mail vérifié (CONTRAT-VERIF.md)
+        Route::post('/souscription', [SouscriptionController::class, 'process'])->middleware('email_verified');
+        Route::post('/signature', [SouscriptionController::class, 'finalize'])->middleware('email_verified');
+        Route::post('/paiement/verifier', [SouscriptionController::class, 'verifyPayment'])->middleware('email_verified');
         Route::get('/contract/preview', [InvoiceController::class, 'previewContract']);
         Route::get('/contract/download', [InvoiceController::class, 'downloadContract']);
 

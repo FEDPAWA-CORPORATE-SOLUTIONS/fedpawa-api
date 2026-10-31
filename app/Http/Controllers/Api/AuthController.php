@@ -7,6 +7,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\PasswordResetRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ResetPasswordRequest;
+use App\Http\Requests\VerifyEmailRequest;
 use App\Http\Requests\VerifyOtpRequest;
 use App\Models\Admin;
 use App\Models\Client;
@@ -35,6 +36,8 @@ use Illuminate\Support\Facades\Log;
  * - POST /api/v1/auth/password/forgot forgotPassword()   200 {message} générique anti-énumération
  * - POST /api/v1/auth/otp/verify      verifyOtp()       200 {message} | 400 | 404
  * - POST /api/v1/auth/password/reset  resetPassword()   200 {message} | 400 | 403
+ * - POST /api/v1/auth/verify-email    verifyEmail()     200 | 400 | 410 | 422 (PUBLIC)
+ * - POST /api/v1/auth/resend-verification resendVerification() 202 | 401 | 409 | 429 (auth)
  */
 class AuthController extends Controller
 {
@@ -96,7 +99,19 @@ class AuthController extends Controller
 
             AuditService::log('REGISTER', (int) $client->id, 'client', 'Compte créé');
 
-            return response()->json(['message' => 'Compte créé avec succès'], 201);
+            // Vérification e-mail (CONTRAT-VERIF.md) : token généré (hash sha256
+            // stocké), e-mail envoyé via le mailer par défaut (log en test, smtp
+            // en prod), email_verification_sent_at = now(). Le token clair ne sort
+            // QUE dans l'e-mail, jamais dans la réponse ni les logs applicatifs.
+            $token = $client->genererTokenVerification();
+            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            try {
+                app(NotificationService::class)->sendVerificationEmail($client, $url);
+            } catch (\Throwable $mailEx) {
+                Log::warning('E-mail de vérification non envoyé pour '.$client->email.': '.$mailEx->getMessage());
+            }
+
+            return response()->json(['message' => 'Compte créé avec succès', 'email_verified' => false], 201);
         } catch (\Throwable $e) {
             report($e);
             Log::error('Register error: '.$e->getMessage());
@@ -212,6 +227,7 @@ class AuthController extends Controller
                 'message' => 'Connexion réussie',
                 'token' => $token,
                 'role' => $role,
+                'email_verified' => $client->estVerifie(),
             ]);
         } catch (\Throwable $e) {
             report($e);
@@ -269,7 +285,111 @@ class AuthController extends Controller
             'name' => (string) ($client->nom ?? $user->name),
             'email' => (string) ($client->email ?? $user->email),
             'kyc_status' => $kycStatus,
+            'email_verified' => $client ? $client->estVerifie() : false,
         ], 200);
+    }
+
+    // ------------------------------------------------------------------
+    // Vérification e-mail : POST /api/v1/auth/verify-email — PUBLIC
+    // Contrat (CONTRAT-VERIF.md) :
+    //   200 {verified:true}                      succès (token consommé)
+    //   200 {verified:true, deja_verifie:true}   client déjà vérifié
+    //   410 {code:"lien_expire"}                 TTL 72 h dépassé
+    //   400 {code:"lien_invalide"}               token inconnu OU déjà utilisé
+    //   422                                       token malformé (validation)
+    // ------------------------------------------------------------------
+    public function verifyEmail(VerifyEmailRequest $request): JsonResponse
+    {
+        try {
+            $token = (string) $request->validated('token');
+
+            $client = Client::trouverParTokenVerification($token);
+            if (! $client) {
+                // Inconnu OU déjà consommé (marquerVerifie() efface le hash).
+                return response()->json([
+                    'code' => 'lien_invalide',
+                    'message' => 'Lien de vérification invalide ou déjà utilisé.',
+                ], 400);
+            }
+
+            if ($client->estVerifie()) {
+                return response()->json(['verified' => true, 'deja_verifie' => true], 200);
+            }
+
+            if ($client->tokenVerificationExpire()) {
+                // On consomme le hash : un lien expiré ne redeviendra jamais valide.
+                $client->email_verification_hash = null;
+                $client->save();
+
+                return response()->json([
+                    'code' => 'lien_expire',
+                    'message' => 'Ce lien de vérification a expiré (72 h). Demandez un nouveau lien depuis votre espace client.',
+                ], 410);
+            }
+
+            $client->marquerVerifie();
+            AuditService::log('EMAIL_VERIFIED', (int) $client->id, 'client', 'Adresse e-mail vérifiée');
+
+            return response()->json(['verified' => true], 200);
+        } catch (\Throwable $e) {
+            report($e);
+            Log::error('Verify email error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Erreur interne'], 500);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Renvoi du lien : POST /api/v1/auth/resend-verification — auth requis
+    // Contrat : uniquement si non vérifié -> 202 {envoye:true} ;
+    // throttle 60 s -> 429 {code:"deja_envoye", retry_after:<s>}.
+    // ------------------------------------------------------------------
+    public function resendVerification(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user('sanctum');
+            $client = $user ? Client::where('email', $user->email)->first() : null;
+            if (! $client) {
+                return response()->json(['error' => 'Client introuvable'], 404);
+            }
+
+            if ($client->estVerifie()) {
+                return response()->json([
+                    'code' => 'deja_verifie',
+                    'message' => 'Votre adresse e-mail est déjà vérifiée.',
+                ], 409);
+            }
+
+            // Throttle 60 s basé sur email_verification_sent_at (déterministe).
+            $sentAt = $client->email_verification_sent_at;
+            if ($sentAt !== null) {
+                $elapsed = now()->timestamp - $sentAt->timestamp;
+                if ($elapsed < 60) {
+                    return response()->json([
+                        'code' => 'deja_envoye',
+                        'message' => 'Un e-mail de vérification vient déjà d\'être envoyé. Réessayez dans quelques secondes.',
+                        'retry_after' => 60 - $elapsed,
+                    ], 429);
+                }
+            }
+
+            $token = $client->genererTokenVerification();
+            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            try {
+                app(NotificationService::class)->sendVerificationEmail($client, $url);
+            } catch (\Throwable $mailEx) {
+                Log::warning('Resend verification non envoyé pour '.$client->email.': '.$mailEx->getMessage());
+            }
+
+            AuditService::log('VERIFICATION_RESENT', (int) $client->id, 'client', 'Lien de vérification renvoyé');
+
+            return response()->json(['envoye' => true], 202);
+        } catch (\Throwable $e) {
+            report($e);
+            Log::error('Resend verification error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Erreur interne'], 500);
+        }
     }
 
     // ------------------------------------------------------------------

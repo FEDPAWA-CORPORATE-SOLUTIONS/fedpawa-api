@@ -81,6 +81,16 @@ class PushService
             return $result;
         }
 
+        // Gating e-mail vérifié (CONTRAT-VERIF.md) : un client non vérifié ne
+        // reçoit AUCUNE notification (ni push ni événement in-app).
+        $emailVerifie = DB::table('clients')->where('id', $clientId)->value('email_verified_at');
+        if ($emailVerifie === null) {
+            $result['motif'] = 'email_non_verifie';
+            Log::info("PushService::notifyEvent — notification {$type} SAUTÉE (e-mail non vérifié) client {$clientId}");
+
+            return $result;
+        }
+
         try {
             // 1. Historique in-app (toujours, même si préférence OFF)
             $result['event_id'] = DB::table('notification_events')->insertGetId([
@@ -157,6 +167,14 @@ class PushService
     {
         if (! in_array($type, self::TYPES, true)) {
             throw new \InvalidArgumentException("Type de notification invalide : {$type}");
+        }
+
+        // Gating e-mail vérifié (CONTRAT-VERIF.md) : client non vérifié = saut total.
+        $emailVerifie = DB::table('clients')->where('id', $clientId)->value('email_verified_at');
+        if ($emailVerifie === null) {
+            Log::info("PushService::sendToClient — notification {$type} SAUTÉE (e-mail non vérifié) client {$clientId}");
+
+            return;
         }
 
         // 1. Historique in-app (toujours, même sans souscription push)

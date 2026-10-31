@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -17,13 +18,26 @@ class NotificationService
 {
     public function __construct(private PushService $push) {}
 
+    /**
+     * Le transport e-mail est-il réellement configuré (SMTP avec un hôte
+     * réel) ? Appelé par les appelants pour DIRE explicitement quand un
+     * envoi n'est pas possible, au lieu de faire croire à un envoi.
+     */
+    public function transportConfigure(): bool
+    {
+        return $this->isConfigured();
+    }
+
     private function isConfigured(): bool
     {
-        $host = (string) config('mail.host', '');
         $mailer = (string) config('mail.default', '');
+        // Laravel 11+ : l'hôte vit dans mail.mailers.smtp.host (pas mail.host)
+        $host = (string) (config('mail.mailers.smtp.host') ?? config('mail.host', ''));
+        $port = (int) (config('mail.mailers.smtp.port') ?? 0);
 
         return $mailer === 'smtp'
             && $host !== ''
+            && $port > 0
             && ! str_contains($host, 'example.com')
             && ! str_contains($host, 'localhost');
     }
@@ -79,6 +93,41 @@ class NotificationService
         );
     }
 
+    /**
+     * E-mail de vérification d'adresse (CONTRAT-VERIF.md).
+     *
+     * Envoi via le mailer PAR DÉFAUT (Mail::send) et non via send()/isConfigured()
+     * : ainsi le même code fonctionne avec MAIL_MAILER=log (test : l'e-mail complet,
+     * lien compris, atterrit dans storage/logs/laravel.log) et avec MAIL_MAILER=smtp
+     * (prod : Brevo, activé par l'orchestrateur SANS changement de code).
+     *
+     * @param  string  $url  URL complète du contrat : https://app.fedpawa.com/verification-email?token=<token>
+     */
+    public function sendVerificationEmail(Client $client, string $url): bool
+    {
+        $subject = 'Vérifiez votre adresse e-mail — FEDPAWA';
+        $lien = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+        $htmlBody = 'Bonjour <strong>'.htmlspecialchars((string) $client->nom, ENT_QUOTES, 'UTF-8').'</strong>,<br><br>'
+            .'Merci de confirmer votre adresse e-mail en cliquant sur le lien suivant '
+            .'(valable '.Client::VERIFICATION_TTL_HEURES.' heures) :<br><br>'
+            .'<a href="'.$lien.'">'.$lien.'</a><br><br>'
+            ."Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>".$lien.'<br><br>'
+            ."Si vous n'êtes pas à l'origine de cette inscription, ignorez cet e-mail.<br><br>"
+            .'FEDPAWA Corporate Solutions';
+
+        try {
+            Mail::send([], [], function ($message) use ($client, $subject, $htmlBody) {
+                $message->to($client->email)->subject($subject)->html($htmlBody);
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            \Log::warning("sendVerificationEmail échec pour {$client->email} : ".$e->getMessage());
+
+            return false;
+        }
+    }
+
     public function sendOtp(string $email, string $code): bool
     {
         return $this->send(
@@ -93,7 +142,7 @@ class NotificationService
         return $this->send(
             $email,
             'Votre code de signature FEDPAWA',
-            'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+            'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Il expire dans 10 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
         );
     }
 
