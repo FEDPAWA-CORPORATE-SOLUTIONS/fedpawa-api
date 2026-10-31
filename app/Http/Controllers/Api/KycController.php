@@ -66,21 +66,21 @@ class KycController extends Controller
             }
             AuditLogger::log($auditAction, $id, 'admin', 'KYC ID: '.$id);
 
-            // Push PWA : notifier le propriétaire du dossier
+            // Notification catalogue : dossier_statut (best-effort, jamais fatal)
             $kyc = DB::table('kyc')->where('id', $id)->first();
             if ($kyc && $kyc->client_id) {
                 if ($statut === 'approuvé') {
-                    $this->push->sendToClient(
+                    $this->push->notifyEvent(
                         (int) $kyc->client_id,
-                        'kyc',
+                        'dossier_statut',
                         'Vos documents KYC sont validés',
                         'Votre dossier KYC a été approuvé par notre équipe.',
                         '/espace-client?tab=kyc'
                     );
                 } else {
-                    $this->push->sendToClient(
+                    $this->push->notifyEvent(
                         (int) $kyc->client_id,
-                        'kyc',
+                        'dossier_statut',
                         'Documents KYC à corriger',
                         'Votre dossier KYC a été rejeté. Merci de soumettre des documents corrigés.',
                         '/espace-client?tab=kyc'

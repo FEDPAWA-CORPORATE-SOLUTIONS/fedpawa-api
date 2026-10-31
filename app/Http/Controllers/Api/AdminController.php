@@ -393,12 +393,12 @@ class AdminController extends Controller
                 return response()->json(['error' => 'Ticket introuvable'], 404);
             }
 
-            // Push PWA : réponse à votre ticket
+            // Notification catalogue : ticket_reponse (best-effort, jamais fatal)
             $ticket = DB::table('tickets_support')->where('id', $ticketId)->first();
             if ($ticket && $ticket->client_id) {
-                $this->push->sendToClient(
+                $this->push->notifyEvent(
                     (int) $ticket->client_id,
-                    'ticket',
+                    'ticket_reponse',
                     'Réponse à votre ticket',
                     'Notre équipe a répondu à votre demande de support.',
                     '/espace-client?tab=support'

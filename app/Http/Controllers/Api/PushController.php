@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PushSubscribeRequest;
+use App\Models\NotificationPreference;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,9 @@ use Illuminate\Validation\Rule;
  * - POST /api/v1/push/unsubscribe  : suppression par endpoint ;
  * - GET  /api/v1/push/vapid        : clé publique VAPID (PUBLIC, sans auth) ;
  * - GET  /api/v1/notifications     : historique du client (20/page, ?unread=1) ;
- * - POST /api/v1/notifications/read : marquer lus {ids:[...]} ou {all:true}.
+ * - POST /api/v1/notifications/read : marquer lus {ids:[...]} ou {all:true} ;
+ * - GET  /api/v1/notifications/preferences : préférences (global + catalogue) ;
+ * - PUT  /api/v1/notifications/preferences : mise à jour partielle (422 si type inconnu).
  */
 class PushController extends Controller
 {
@@ -154,6 +157,92 @@ class PushController extends Controller
         $count = $query->update(['read_at' => now()->format('Y-m-d H:i:s')]);
 
         return response()->json(['message' => 'Notifications marquées lues', 'marked' => $count]);
+    }
+
+    /**
+     * GET /api/v1/notifications/preferences (auth:sanctum)
+     * → {global: bool, events: [{type, label, enabled}]} — défaut : tout activé.
+     */
+    public function preferences(Request $request): JsonResponse
+    {
+        $clientId = $this->clientId($request);
+        if ($clientId === null) {
+            return response()->json(['error' => 'Client introuvable'], 404);
+        }
+
+        return response()->json($this->preferencesPayload($clientId));
+    }
+
+    /**
+     * PUT /api/v1/notifications/preferences (auth:sanctum)
+     * Body {global?: bool, events?: {<type>: bool}} — partiel accepté.
+     * 422 si un type d'événement est inconnu du catalogue. → 200 JSON complet.
+     */
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $clientId = $this->clientId($request);
+        if ($clientId === null) {
+            return response()->json(['error' => 'Client introuvable'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'global' => ['sometimes', 'boolean'],
+            'events' => ['sometimes', 'array'],
+            'events.*' => ['boolean'],
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $events = $request->input('events');
+        if (is_array($events)) {
+            foreach ($events as $type => $enabled) {
+                if (! in_array((string) $type, PushService::EVENT_TYPES, true)) {
+                    return response()->json([
+                        'error' => "Type d'événement inconnu : {$type}",
+                        'types_valides' => PushService::EVENT_TYPES,
+                    ], 422);
+                }
+            }
+        }
+
+        if ($request->has('global')) {
+            NotificationPreference::updateOrCreate(
+                ['user_id' => $clientId, 'type' => NotificationPreference::GLOBAL],
+                ['enabled' => (bool) $request->input('global')]
+            );
+        }
+
+        if (is_array($events)) {
+            foreach ($events as $type => $enabled) {
+                NotificationPreference::updateOrCreate(
+                    ['user_id' => $clientId, 'type' => (string) $type],
+                    ['enabled' => (bool) $enabled]
+                );
+            }
+        }
+
+        return response()->json($this->preferencesPayload($clientId));
+    }
+
+    /** Forme exacte du contrat : {global, events:[{type,label,enabled}]}. */
+    private function preferencesPayload(int $clientId): array
+    {
+        $rows = NotificationPreference::where('user_id', $clientId)->pluck('enabled', 'type');
+
+        $events = [];
+        foreach (PushService::EVENT_TYPES as $type) {
+            $events[] = [
+                'type' => $type,
+                'label' => PushService::EVENT_LABELS[$type],
+                'enabled' => isset($rows[$type]) ? (bool) $rows[$type] : true,
+            ];
+        }
+
+        return [
+            'global' => isset($rows[NotificationPreference::GLOBAL]) ? (bool) $rows[NotificationPreference::GLOBAL] : true,
+            'events' => $events,
+        ];
     }
 
     /** Client (table clients) lié au token Sanctum — convention du repo. */

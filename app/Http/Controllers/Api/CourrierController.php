@@ -59,10 +59,10 @@ class CourrierController extends Controller
                 'statut' => 'non_lu',
             ]);
 
-            // Push PWA : nouveau courrier disponible pour ce client
-            $this->push->sendToClient(
+            // Notification catalogue : courrier_recu (best-effort, jamais fatal)
+            $this->push->notifyEvent(
                 $clientId,
-                'courrier',
+                'courrier_recu',
                 'Nouveau courrier disponible',
                 'Un nouveau courrier vous attend dans votre espace client.',
                 '/espace-client?tab=courriers'

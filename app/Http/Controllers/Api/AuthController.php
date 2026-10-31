@@ -16,6 +16,7 @@ use App\Services\AuditService;
 use App\Services\InternalMailService;
 use App\Services\LoginThrottleService;
 use App\Services\NotificationService;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -172,6 +173,38 @@ class AuthController extends Controller
             $role = (string) ($client->role ?? 'client');
             AuditService::log('CLIENT_LOGIN', (int) $client->id, 'client', 'Login OK');
 
+            // Notification catalogue : compte_securite — connexion depuis un nouvel appareil
+            try {
+                $uaHash = hash('sha256', (string) $request->userAgent());
+                $device = DB::table('login_devices')
+                    ->where('client_id', (int) $client->id)
+                    ->where('ua_hash', $uaHash)
+                    ->first();
+                if (! $device) {
+                    DB::table('login_devices')->insert([
+                        'client_id' => (int) $client->id,
+                        'ua_hash' => $uaHash,
+                        'ip' => $ip,
+                        'first_seen_at' => now()->format('Y-m-d H:i:s'),
+                        'last_seen_at' => now()->format('Y-m-d H:i:s'),
+                    ]);
+                    app(PushService::class)->notifyEvent(
+                        (int) $client->id,
+                        'compte_securite',
+                        'Nouvelle connexion à votre compte',
+                        "Une connexion depuis un nouvel appareil a été détectée (IP {$ip}). Si ce n'est pas vous, changez votre mot de passe immédiatement.",
+                        '/espace-client?tab=securite'
+                    );
+                } else {
+                    DB::table('login_devices')->where('id', $device->id)->update([
+                        'last_seen_at' => now()->format('Y-m-d H:i:s'),
+                        'ip' => $ip,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('compte_securite (login) non fatal : '.$e->getMessage());
+            }
+
             $user = $this->sanctumUserFor($client);
             $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -272,7 +305,8 @@ class AuthController extends Controller
                 Log::warning('OTP mail envoi échoué: '.$mailEx->getMessage());
             }
             if (! $otpSent) {
-                Log::info("[OTP-DEV] code pour {$email} : {$token}");
+                // Le code n'est JAMAIS écrit en clair dans les logs (interdit).
+                Log::info("[OTP] transport e-mail non configuré — aucun code envoyé ni journalisé pour {$email}");
             }
 
             return response()->json(['message' => $generic]);
@@ -351,6 +385,19 @@ class AuthController extends Controller
                 ['email' => $client->email],
                 ['name' => $client->nom, 'password' => $data['mot_de_passe']]
             );
+
+            // Notification catalogue : compte_securite — mot de passe modifié (best-effort)
+            try {
+                app(PushService::class)->notifyEvent(
+                    (int) $client->id,
+                    'compte_securite',
+                    'Votre mot de passe a été modifié',
+                    'Le mot de passe de votre compte FEDPAWA vient d\'être modifié. Si ce n\'est pas vous, contactez immédiatement le support.',
+                    '/espace-client?tab=securite'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('compte_securite (reset) non fatal : '.$e->getMessage());
+            }
 
             return response()->json(['message' => 'Mot de passe mis à jour avec succès']);
         } catch (\Throwable $e) {

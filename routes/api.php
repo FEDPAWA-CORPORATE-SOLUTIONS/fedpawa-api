@@ -56,6 +56,10 @@ Route::prefix('v1')->group(function (): void {
         // Notifications in-app du client (20/page, ?unread=1)
         Route::get('/notifications', [PushController::class, 'notifications']);
         Route::post('/notifications/read', [PushController::class, 'read']);
+
+        // Préférences de notification (contrat PWA) : GET complet, PUT partiel
+        Route::get('/notifications/preferences', [PushController::class, 'preferences']);
+        Route::put('/notifications/preferences', [PushController::class, 'updatePreferences']);
     });
     // ===== Fin section PUSH PWA =====
 

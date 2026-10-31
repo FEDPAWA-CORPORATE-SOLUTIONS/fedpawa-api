@@ -108,10 +108,10 @@ class SouscriptionController extends Controller
             ]);
 
             // 4. Générer l'OTP pour la signature.
-            // Sécurité (audit) : l'OTP ne part QUE par e-mail (en dev, SMTP non
-            // configuré => il est tracé dans la log, parité [OTP-DEV] du reset
-            // password). Il n'apparaît dans la réponse JSON QUE si le mode démo
-            // est explicitement activé (APP_DEBUG + FEDPAWA_DEMO_MODE=true).
+            // Sécurité (audit) : l'OTP ne part QUE par e-mail et n'est JAMAIS
+            // écrit en clair dans les logs. Il n'apparaît dans la réponse JSON
+            // QUE si le mode démo est explicitement activé (APP_DEBUG +
+            // FEDPAWA_DEMO_MODE=true, tests e2e uniquement).
             $otp = OtpService::generate($sub['client_id']);
             $clientEmail = (string) ($input['email'] ?? $user->email);
             $otpDelivered = false;
@@ -121,7 +121,8 @@ class SouscriptionController extends Controller
                 report($mailEx);
             }
             if (! $otpDelivered) {
-                Log::info("[OTP-SIGN] code pour {$clientEmail} : {$otp}");
+                // Le code n'est JAMAIS écrit en clair dans les logs (interdit).
+                Log::info("[OTP-SIGN] transport e-mail non configuré — aucun code envoyé ni journalisé pour {$clientEmail}");
             }
 
             AuditLogger::log('SUBSCRIPTION_INIT', $sub['client_id'], 'client', 'Sub ID: '.$sub['subscription_id']);
@@ -202,10 +203,10 @@ class SouscriptionController extends Controller
 
                 $this->notifier->sendWelcomeEmail($sub->email, $sub->nom);
 
-                // Push PWA : contrat prêt (signature domiciliation complétée)
-                $this->push->sendToClient(
+                // Notification catalogue : contrat_signe (best-effort, jamais fatal)
+                $this->push->notifyEvent(
                     $clientId,
-                    'systeme',
+                    'contrat_signe',
                     'Votre contrat est prêt',
                     'Votre contrat de domiciliation a été signé et est disponible dans votre espace client.',
                     '/espace-client?tab=documents'
@@ -291,12 +292,19 @@ class SouscriptionController extends Controller
                     report($fe);
                 }
 
-                // Push PWA : facture disponible + abonnement activé (une seule fois
-                // par transition en_attente -> recu)
+                // Notifications catalogue : paiement_recu + facture_emise + abonnement
+                // (une seule fois par transition en_attente -> recu)
                 if (! $pay || $pay->statut !== 'recu') {
-                    $this->push->sendToClient(
+                    $this->push->notifyEvent(
                         $clientId,
-                        'facture',
+                        'paiement_recu',
+                        'Paiement reçu',
+                        'Votre paiement a été confirmé. Merci pour votre confiance.',
+                        '/espace-client?tab=paiements'
+                    );
+                    $this->push->notifyEvent(
+                        $clientId,
+                        'facture_emise',
                         'Votre facture est disponible',
                         'Votre paiement a été confirmé. La facture est disponible dans votre espace client.',
                         '/espace-client?tab=factures'

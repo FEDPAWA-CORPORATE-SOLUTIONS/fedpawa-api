@@ -73,10 +73,34 @@ class WebhookController extends Controller
             if ($statut === 'recu') {
                 $pay = DB::table('paiements')->where('transaction_id', $data['transaction_id'])->first();
                 if ($pay) {
+                    $factureId = null;
                     try {
-                        FactureService::createForPayment((int) $pay->client_id, (float) $pay->montant, (string) $data['transaction_id']);
+                        $factureId = FactureService::createForPayment((int) $pay->client_id, (float) $pay->montant, (string) $data['transaction_id']);
                     } catch (\Exception $fe) {
                         report($fe);
+                    }
+
+                    // Notifications catalogue (best-effort, jamais fatal au webhook)
+                    try {
+                        $push = app(\App\Services\PushService::class);
+                        $push->notifyEvent(
+                            (int) $pay->client_id,
+                            'paiement_recu',
+                            'Paiement reçu',
+                            'Votre paiement a été confirmé par notre partenaire de paiement.',
+                            '/espace-client?tab=paiements'
+                        );
+                        if ($factureId !== null) {
+                            $push->notifyEvent(
+                                (int) $pay->client_id,
+                                'facture_emise',
+                                'Votre facture est disponible',
+                                'Votre facture vient d\'être émise et est disponible dans votre espace client.',
+                                '/espace-client?tab=factures'
+                            );
+                        }
+                    } catch (\Throwable $pushEx) {
+                        \Illuminate\Support\Facades\Log::warning('WebhookController: notifyEvent non fatal — '.$pushEx->getMessage());
                     }
                 }
             }
