@@ -1,0 +1,20 @@
+{{-- BRIEF-B3 : gabarit porté de templates/03-souscription-confirmee (worker D) — mêmes variables. --}}
+@extends('emails.layout')
+
+@section('titre_page')
+Votre souscription {{ $pack }} est confirmée — FEDPAWA
+@endsection
+
+@section('preheader')
+Souscription confirmée : pack {{ $pack }}, prochaine étape la signature de votre contrat.
+@endsection
+
+@section('content')
+
+<div class="em-kicker" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#15294D;margin-bottom:14px;">Souscription</div>
+<h1 class="em-h1" style="margin:0 0 20px;font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:1.25;color:#0A1424;">Votre souscription est confirmée</h1>
+<p class="em-p" style="margin:0 0 16px;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.7;color:#1E293B;">Bonjour <strong>{{ $client_nom }}</strong>,<br><br>Votre souscription au pack <strong>{{ $pack }}</strong> est bien enregistrée. Il ne reste plus qu'à signer votre contrat de domiciliation.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="em-box" style="background-color:#FAF9F6;border:1px solid #E2DDD5;border-radius:8px;padding:18px 20px;margin:0 0 24px;"><tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;"><tr><td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">Pack</td><td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $pack }}</td></tr></table><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;"><tr><td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">Montant</td><td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $montant }} {{ $devise }}</td></tr></table><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;"><tr><td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">Date de souscription</td><td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $date_souscription }}</td></tr></table></td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px 0 24px;"><tr><td align="center" bgcolor="#15294D" class="em-cta-td" style="background-color:#15294D;"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $lien_signature }}" style="height:50px;v-text-anchor:middle;width:280px;" arcsize="0%" fillcolor="#15294D" stroke="f"><v:textbox inset="0,0,0,0"><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Signer mon contrat</center></v:textbox></v:roundrect><![endif]--><!--[if !mso]><!--><a href="{{ $lien_signature }}" class="em-btn" style="display:inline-block;background-color:#15294D;color:#FFFFFF;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 32px;">Signer mon contrat</a><!--<![endif]--></td></tr></table>
+<p style="margin:0 0 24px;"><a href="{{ $lien_espace_client }}" class="em-link" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#15294D;text-decoration:none;border-bottom:1.5px solid #15294D;padding-bottom:4px;">Voir le détail dans mon espace client</a></p>
+@endsection
