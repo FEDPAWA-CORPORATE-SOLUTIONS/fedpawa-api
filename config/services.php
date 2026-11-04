@@ -20,6 +20,9 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
+        // Contrat-MAIL : signature du webhook de réception (whsec_...) + base API
+        'webhook_secret' => env('RESEND_WEBHOOK_SECRET'),
+        'api_base' => env('RESEND_API_BASE', 'https://api.resend.com'),
     ],
 
     'ses' => [

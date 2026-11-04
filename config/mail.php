@@ -115,4 +115,17 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Garde-fou e-mails transactionnels (BRIEF-B3)
+    |--------------------------------------------------------------------------
+    |
+    | Free tier Resend : 100 e-mails/jour (jour calendaire UTC). Compteur
+    | applicatif côté EmailService ; au-delà, l'e-mail est sauté avec le motif
+    | tracé `limite_quotidienne` (l'événement in-app/push reste). Configurable
+    | via EMAIL_DAILY_LIMIT (placeholder commenté dans .env, défaut 100).
+    |
+    */
+    'daily_limit' => (int) env('EMAIL_DAILY_LIMIT', 100),
+
 ];
