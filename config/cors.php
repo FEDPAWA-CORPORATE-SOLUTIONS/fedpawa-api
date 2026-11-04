@@ -14,6 +14,7 @@ return [
 
     'allowed_origins' => array_values(array_unique(array_filter([
         env('APP_URL'),
+        'https://www.fedpawa.com',
         'http://localhost:3000',
         'http://localhost',
     ]))),
