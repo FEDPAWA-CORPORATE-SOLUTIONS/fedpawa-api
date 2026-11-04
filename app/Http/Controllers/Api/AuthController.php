@@ -420,7 +420,7 @@ class AuthController extends Controller
 
             $otpSent = false;
             try {
-                $otpSent = (new NotificationService())->sendOtp($email, $token);
+                $otpSent = app(NotificationService::class)->sendOtp($email, $token);
             } catch (\Throwable $mailEx) {
                 Log::warning('OTP mail envoi échoué: '.$mailEx->getMessage());
             }

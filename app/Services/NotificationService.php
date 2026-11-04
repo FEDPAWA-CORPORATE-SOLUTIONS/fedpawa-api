@@ -35,9 +35,8 @@ class NotificationService
         $host = (string) (config('mail.mailers.smtp.host') ?? config('mail.host', ''));
         $port = (int) (config('mail.mailers.smtp.port') ?? 0);
 
-        return $mailer === 'smtp'
-            && $host !== ''
-            && $port > 0
+        return $mailer === 'resend'
+            || ($mailer === 'smtp' && $host !== '' && $port > 0)
             && ! str_contains($host, 'example.com')
             && ! str_contains($host, 'localhost');
     }

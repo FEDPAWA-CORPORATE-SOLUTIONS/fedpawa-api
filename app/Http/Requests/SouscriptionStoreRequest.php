@@ -24,7 +24,7 @@ class SouscriptionStoreRequest extends FormRequest
             'email' => ['required', 'email'],
             'pack' => ['required', 'string', 'max:255'],
             'nom' => ['required', 'string', 'max:255'],
-            'prix' => ['required', 'numeric', 'gt:0'],
+            'prix' => ['required', 'numeric', 'gte:0'],
             'entreprise' => ['nullable', 'string', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:32'],
             'service' => ['nullable', 'string', 'max:255'],
@@ -55,6 +55,7 @@ class SouscriptionStoreRequest extends FormRequest
             'prix.required' => 'Prix invalide.',
             'prix.numeric' => 'Prix invalide.',
             'prix.gt' => 'Prix invalide.',
+            'prix.gte' => 'Prix invalide.',
         ];
     }
 }

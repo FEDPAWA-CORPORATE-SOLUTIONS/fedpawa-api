@@ -108,7 +108,6 @@ class PdfService
         $today = now()->format('d/m/Y à H:i');
 
         $map = [
-            '[DOMICILIE_CAPITAL]' => $get('capital', '………'),
             '[DOMICILIE_RCCM]' => $get('rccm', "en cours d'immatriculation"),
             '[DOMICILIE_NIU]' => $get('niu', "en cours d'attribution"),
             '[DOMICILIE_SIEGE]' => $get('siege', '………'),

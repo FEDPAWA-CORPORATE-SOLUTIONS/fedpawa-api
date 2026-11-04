@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Mail\ResendTransport;
+use Illuminate\Support\Facades\Mail;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // RESEND-INTEGRATION.md §3 : transport custom « resend », zéro dépendance composer.
+        // Activé uniquement si MAIL_MAILER=resend.
+        Mail::extend('resend', fn () => new ResendTransport());
+
         //
     }
 }

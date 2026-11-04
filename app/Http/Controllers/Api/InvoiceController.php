@@ -41,7 +41,13 @@ class InvoiceController extends Controller
         if (! $client) {
             return response(['error' => 'Non autorisé'], 403);
         }
-        $facture = DB::table('factures')->where('id', $id)->where('client_id', $client->id)->first();
+        // Branche admin : l'administrateur peut télécharger TOUTE facture
+        // (parité renderContract) ; un client ne voit que ses propres factures.
+        $facture = DB::table('factures')->where('id', $id);
+        if ($client->role !== 'admin') {
+            $facture->where('client_id', $client->id);
+        }
+        $facture = $facture->first();
         if (! $facture) {
             return response(['error' => 'Facture introuvable'], 404);
         }

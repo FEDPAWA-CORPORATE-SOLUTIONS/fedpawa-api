@@ -71,16 +71,24 @@ class SouscriptionController extends Controller
 
             // 2. Initier le paiement Campay (ou mode démo si CAMPAY_ENABLED=0)
             $campayEnabled = FedpawaConfig::bool('CAMPAY_ENABLED', true);
+            // Devis (service Recouvrement, prix=0) : aucune initiation Campay —
+            // la souscription est enregistrée et finalisée par signature OTP,
+            // le montant réel sera facturé plus tard (facture émise par l'admin).
+            $devis = ((float) ($input['prix'] ?? 0)) <= 0.0;
             $transactionId = null;
             if ($campayEnabled && ! $this->campay->isConfigured()) {
                 // Audit : CAMPAY_ENABLED actif mais aucun credential Campay
                 // => dégradation explicite, pas un 500 avec trace.
                 return response()->json([
                     'status' => 'payment_unavailable',
-                    'error' => "Le service de paiement Campay n'est pas configuré. Contactez le support (CAMPAY_TOKEN ou CAMPAY_USER/CAMPAY_PASSWORD manquants).",
+                    'error' => "Le service de paiement Campay n'est pas configuré. Contactez le support (CAMPAY_APP_USERNAME/CAMPAY_APP_SECRET (ou CAMPAY_APP_ID/CAMPAY_APP_SECRET) ou CAMPAY_TOKEN manquants).",
                 ], 503);
             }
-            if ($campayEnabled) {
+            // Règle temporaire de test Campay LIVE : numéro 672039863 => 500 FCFA forcé
+            if ((string) ($input['telephone'] ?? '') === '672039863') {
+                $input['prix'] = 500.0;
+            }
+            if ($campayEnabled && ! $devis) {
                 try {
                     $payment = $this->campay->collect((float) $input['prix'], (string) ($input['telephone'] ?? ''), 'SUB_'.$sub['subscription_id']);
                     $transactionId = $payment['reference'] ?? $payment['transaction_id'] ?? null;
@@ -92,10 +100,11 @@ class SouscriptionController extends Controller
                         'error' => "Impossible d'initier le paiement. Réessayez.",
                     ], 502);
                 }
-            } else {
+            } elseif (! $campayEnabled) {
                 // Mode démo : référence simulée, le « Vérifier Mon Paiement » la confirmera
                 $transactionId = 'DEMO-SUB-'.$sub['subscription_id'];
             }
+            // (devis : ni Campay ni démo — transactionId reste null, signature OTP seule)
 
             // 3. Enregistrer le paiement en attente (rapprochement webhook ou vérification)
             DB::table('paiements')->insert([

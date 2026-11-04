@@ -54,7 +54,7 @@ class SubscriptionService
             $detailsData = [];
             foreach ([
                 'rccm' => 'rccm', 'niu' => 'niu', 'adresse' => 'siege',
-                'representant' => 'representant', 'qualite' => 'qualite', 'capital' => 'capital',
+                'representant' => 'representant', 'fonction' => 'qualite',
             ] as $in => $key) {
                 $v = trim((string) ($data[$in] ?? ''));
                 if ($v !== '') {
