@@ -14,6 +14,11 @@ use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\AdminMailController;
+use App\Http\Controllers\Api\AdminPublicationController;
+use App\Http\Controllers\Api\PublicationController;
+use App\Http\Controllers\Api\PublicationLectureController;
+use App\Http\Controllers\Api\ResendWebhookController;
 use App\Http\Middleware\CheckAdminRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +53,10 @@ Route::prefix('v1')->group(function (): void {
     // Webhook Campay : serveur-à-serveur, signature HMAC vérifiée dans le contrôleur
     // (pas de middleware auth ; exempté CSRF par nature — API stateless).
     Route::post('/webhooks/campay', [WebhookController::class, 'handleCampay']);
+
+    // ===== Section RESEND-MAIL (CONTRAT-MAIL.md §2) — webhook public Resend =====
+    Route::post('/webhooks/resend', [ResendWebhookController::class, 'handle']);
+    // ===== Fin section RESEND-MAIL (webhook) =====
 
     // ===== Section PUSH PWA =====
     // VAPID public : la clé publique n'est pas un secret (le PWA en a besoin
@@ -137,6 +146,41 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/admin/ticket/reply', [AdminController::class, 'ticketReply']);
         });
     });
+
+
+    // ===== Section PUBLICATIONS (CONTRAT-PUBLICATIONS.md §3) =====
+    Route::get('/publications/non-lues', [PublicationLectureController::class, 'nonLues'])->middleware('auth:sanctum');
+    Route::get('/publications', [PublicationController::class, 'index']);
+    Route::get('/publications/{id}', [PublicationController::class, 'show'])->whereNumber('id');
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/publications/tout-lu', [PublicationLectureController::class, 'toutLu']);
+        Route::post('/publications/{id}/lu', [PublicationLectureController::class, 'marquerLu'])->whereNumber('id');
+
+        Route::middleware(CheckAdminRole::class)->prefix('admin')->group(function (): void {
+            Route::get('/publications', [AdminPublicationController::class, 'index']);
+            Route::post('/publications', [AdminPublicationController::class, 'store']);
+            Route::put('/publications/{id}', [AdminPublicationController::class, 'update'])->whereNumber('id');
+            Route::post('/publications/{id}/medias', [AdminPublicationController::class, 'ajouterMedia'])->whereNumber('id');
+            Route::delete('/publications/{id}/medias/{mediaId}', [AdminPublicationController::class, 'supprimerMedia'])->whereNumber('id')->whereNumber('mediaId');
+            Route::post('/publications/{id}/publier', [AdminPublicationController::class, 'publier'])->whereNumber('id');
+            Route::post('/publications/{id}/depublier', [AdminPublicationController::class, 'depublier'])->whereNumber('id');
+            Route::delete('/publications/{id}', [AdminPublicationController::class, 'destroy'])->whereNumber('id');
+        });
+    });
+    // ===== Fin section PUBLICATIONS =====
+
+    // ===== Section RESEND-MAIL (CONTRAT-MAIL.md §2) — boîte de réception admin =====
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::middleware(CheckAdminRole::class)->prefix('admin')->group(function (): void {
+            Route::get('/mails', [AdminMailController::class, 'index']);
+            Route::get('/mails/count', [AdminMailController::class, 'count']);
+            Route::post('/mails/tout-lu', [AdminMailController::class, 'toutLu']);
+            Route::get('/mails/{id}', [AdminMailController::class, 'show'])->whereNumber('id');
+            Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
+        });
+    });
+    // ===== Fin section RESEND-MAIL (admin) =====
 
     // ===== Fin section BE-EDGE =====
 });
