@@ -1,0 +1,14 @@
+# Kore-OS WPA — kanahan.fedpawa.com
+http://kanahan.fedpawa.com {
+    reverse_proxy 127.0.0.1:8081
+}
+
+# Kore-OS API — api.kanahan.fedpawa.com (même WPA Next.js qui sert les routes API)
+http://api.kanahan.fedpawa.com {
+    reverse_proxy 127.0.0.1:8081
+}
+
+# Existing fedpawa route
+http://*:8082 {
+    reverse_proxy 127.0.0.1:3002
+}

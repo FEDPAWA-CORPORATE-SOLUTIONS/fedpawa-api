@@ -1,0 +1,88 @@
+# ==========================================
+# docker-compose.yml — KORE-OS full stack
+# Backend (Kore-OS_TEP MCP admin + gateway) + Frontend (WPA Next.js)
+# ==========================================
+
+services:
+  kore-os-admin:
+    build:
+      context: /root/Kore-OS_TEP
+      dockerfile: Dockerfile
+    container_name: kore-os-admin
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - NODE_ENV=production
+      - KORE_IPC_PATH=/run/kore/kore-os.sock
+      - KORE_DB_PATH=/home/elo/data/tasks.db
+      - KORE_DATA_ROOT=/home/elo/data
+      - KORE_WORKSPACE_ROOT=/home/elo/workspace
+      - KORE_REPORTS_DIR=/home/elo/reports
+      - KORE_BROWSER_CONTEXT_DIR=/home/elo/.local/share/browser-context
+      - KORE_VAULT_DIR=/home/elo/data/kore-vault
+      - KORE_STATE_REPO=/home/elo/data/elo-state
+      - KORE_VAULT_MASTER_KEY=${KORE_VAULT_MASTER_KEY}
+    volumes:
+      - kore-ipc:/run/kore
+      - kore-data:/home/elo/data
+      - kore-reports:/home/elo/reports
+      - kore-workspace:/home/elo/workspace
+      - /root/Kore-OS_TEP/config:/usr/src/app/config:ro
+    restart: unless-stopped
+    command: ["node", "dist/index.js"]
+
+  kore-os-gateway:
+    build:
+      context: /root/Kore-OS_TEP
+      dockerfile: Dockerfile
+    container_name: kore-os-gateway
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - NODE_ENV=production
+      - KORE_IPC_PATH=/run/kore/kore-os.sock
+    volumes:
+      - kore-ipc:/run/kore
+      - kore-data:/home/elo/data
+      - kore-reports:/home/elo/reports
+      - /root/Kore-OS_TEP/config:/usr/src/app/config:ro
+      - /root/Kore-OS_TEP/src/pwa:/usr/src/app/pwa:ro
+    restart: unless-stopped
+    command: ["node", "dist/server.js"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      - kore-os-admin
+
+  kore-os-wpa:
+    build:
+      context: /root/Kore-OS_WPA-next
+      dockerfile: Dockerfile
+    container_name: kore-os-wpa
+    environment:
+      - NODE_ENV=production
+      - PORT=8081
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  kore-ipc:
+  kore-data:
+  kore-reports:
+  kore-workspace:
