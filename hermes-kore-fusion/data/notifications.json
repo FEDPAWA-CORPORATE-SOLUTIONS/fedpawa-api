@@ -1,0 +1,167 @@
+{
+  "version": "1.0",
+  "date_creation": "2026-11-08",
+  "notifications": [
+    {
+      "id": "notif_93fba41d",
+      "expediteur": "systeme",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_0b7a1663",
+      "type": "blocker",
+      "message": "Une nouvelle tâche a été créée : 'Produire une vidéo de lancement de 2 minutes pour le produit Client X'. Des questions de clarification sont nécessaires avant de commencer.",
+      "date_creation": "2026-11-08T18:02:17.129732+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_ce6b4f95",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_0b7a1663",
+      "type": "completion",
+      "message": "Le plan pour 'Produire une vidéo de lancement de 2 minutes pour le produit Client X' est approuvé. L'exécution démarre.",
+      "date_creation": "2026-11-08T18:02:17.132596+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_58240ce8",
+      "expediteur": "superviseur",
+      "destinataire": "administrateur",
+      "tache_id": "tache_0b7a1663",
+      "type": "completion",
+      "message": "Tâche 'Produire une vidéo de lancement de 2 minutes pour le produit Client X' validée par le superviseur. Résultat excellent, prêt à être livré à l'utilisateur.",
+      "date_creation": "2026-11-08T18:02:17.135021+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_960cd584",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_0b7a1663",
+      "type": "completion",
+      "message": "Votre tâche 'Produire une vidéo de lancement de 2 minutes pour le produit Client X' est terminée. Le résultat est prêt à être consulté.",
+      "date_creation": "2026-11-08T18:02:17.135271+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_95e53d5d",
+      "expediteur": "systeme",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_78e86576",
+      "type": "blocker",
+      "message": "Une nouvelle tâche a été créée : 'Rédiger un article de blog pour Client Y'. Des questions de clarification sont nécessaires avant de commencer.",
+      "date_creation": "2026-11-08T18:02:25.959550+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_28de2289",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_78e86576",
+      "type": "completion",
+      "message": "Le plan pour 'Rédiger un article de blog pour Client Y' est approuvé. L'exécution démarre.",
+      "date_creation": "2026-11-08T18:02:25.962311+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_6254bbf6",
+      "expediteur": "superviseur",
+      "destinataire": "worker",
+      "tache_id": "tache_78e86576",
+      "type": "correction",
+      "message": "Le résultat pour 'Rédiger un article de blog pour Client Y' n'est pas encore excellent. Corrections demandées : Trop court ; Sources non citées ; Ton trop enthousiaste.",
+      "date_creation": "2026-11-08T18:02:25.965301+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_b23f4fbe",
+      "expediteur": "superviseur",
+      "destinataire": "administrateur",
+      "tache_id": "tache_78e86576",
+      "type": "completion",
+      "message": "Tâche 'Rédiger un article de blog pour Client Y' validée par le superviseur. Résultat excellent, prêt à être livré à l'utilisateur.",
+      "date_creation": "2026-11-08T18:02:25.967046+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_a1484ac4",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_78e86576",
+      "type": "completion",
+      "message": "Votre tâche 'Rédiger un article de blog pour Client Y' est terminée. Le résultat est prêt à être consulté.",
+      "date_creation": "2026-11-08T18:02:25.967465+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_edca666c",
+      "expediteur": "systeme",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_226abd66",
+      "type": "blocker",
+      "message": "Une nouvelle tâche a été créée : 'Analyser des données complexes manquantes'. Des questions de clarification sont nécessaires avant de commencer.",
+      "date_creation": "2026-11-08T18:02:25.969098+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_a9eac019",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_226abd66",
+      "type": "completion",
+      "message": "Le plan pour 'Analyser des données complexes manquantes' est approuvé. L'exécution démarre.",
+      "date_creation": "2026-11-08T18:02:25.969683+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_eacf1614",
+      "expediteur": "systeme",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_20fd70de",
+      "type": "blocker",
+      "message": "Une nouvelle tâche a été créée : 'Analyser des données complexes manquantes'. Des questions de clarification sont nécessaires avant de commencer.",
+      "date_creation": "2026-11-08T18:02:41.944382+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_3dcc6dd9",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_20fd70de",
+      "type": "completion",
+      "message": "Le plan pour 'Analyser des données complexes manquantes' est approuvé. L'exécution démarre.",
+      "date_creation": "2026-11-08T18:02:41.945209+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_afe5fddc",
+      "expediteur": "systeme",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_3eaf1745",
+      "type": "blocker",
+      "message": "Une nouvelle tâche a été créée : 'Analyser des données complexes manquantes'. Des questions de clarification sont nécessaires avant de commencer.",
+      "date_creation": "2026-11-08T18:02:47.034683+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_95856e7f",
+      "expediteur": "administrateur",
+      "destinataire": "utilisateur",
+      "tache_id": "tache_3eaf1745",
+      "type": "completion",
+      "message": "Le plan pour 'Analyser des données complexes manquantes' est approuvé. L'exécution démarre.",
+      "date_creation": "2026-11-08T18:02:47.035517+00:00",
+      "lue": false
+    },
+    {
+      "id": "notif_caa2fc03",
+      "expediteur": "worker",
+      "destinataire": "administrateur",
+      "tache_id": "tache_3eaf1745",
+      "type": "blocker",
+      "message": "Échec sur 'Analyser des données complexes manquantes' : Données sources inaccessibles (API externe en maintenance). Solutions : Attendre le rétablissement de l'API ; Utiliser un jeu de données de remplacement ; Contacter le fournisseur. Implications : Délai supplémentaire de 24h ; Résultats partiels possibles ; Coût supplémentaire. Décision requise.",
+      "date_creation": "2026-11-08T18:02:47.038632+00:00",
+      "lue": false
+    }
+  ],
+  "compteur_notifications": 16
+}

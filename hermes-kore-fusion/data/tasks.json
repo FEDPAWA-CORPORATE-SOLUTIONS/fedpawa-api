@@ -1,0 +1,184 @@
+{
+  "version": "1.0",
+  "date_creation": "2026-11-08",
+  "taches": [
+    {
+      "id": "tache_0b7a1663",
+      "objectif": "Produire une vidéo de lancement de 2 minutes pour le produit Client X",
+      "session_id": null,
+      "lane_id": "lane_marketing",
+      "priorite": "haute",
+      "classe_souhaitee": "worker_class_motion_design",
+      "statut": "termine",
+      "etape_actuelle": "rendu_compte",
+      "questions_clarification": [
+        "Quel style d'animation souhaitez-vous ?",
+        "Quelle est la charte graphique de Client X ?"
+      ],
+      "reponses_clarification": {
+        "Quel style d'animation souhaitez-vous ?": "Motion design épuré, style After Effects",
+        "Quelle est la charte graphique de Client X ?": "Couleurs bleue et blanche, ton professionnel"
+      },
+      "plan": {
+        "objectif": "Produire une vidéo de lancement de 2 minutes pour le produit Client X",
+        "classe_worker": "worker_class_motion_design",
+        "nom_classe": "Motion Design",
+        "etapes": [
+          "1. Clarification des besoins (réponses reçues)",
+          "2. Exécution par le worker assigné",
+          "3. Contrôle qualité par le superviseur",
+          "4. Livraison à l'utilisateur"
+        ],
+        "questions_clarification": [
+          "Quel style d'animation souhaitez-vous ?",
+          "Quelle est la charte graphique de Client X ?"
+        ],
+        "reponses_clarification": {
+          "Quel style d'animation souhaitez-vous ?": "Motion design épuré, style After Effects",
+          "Quelle est la charte graphique de Client X ?": "Couleurs bleue et blanche, ton professionnel"
+        }
+      },
+      "plan_approuve": true,
+      "worker_assigne": "Motion Designer Client X",
+      "worker_id": "worker_98900323",
+      "superviseur_id": null,
+      "resultat": "Vidéo de lancement rendue : 2 minutes, motion design épuré, couleurs bleue et blanche respectées, ton professionnel.",
+      "probleme": null,
+      "solutions_potentielles": [],
+      "date_creation": "2026-11-08T18:02:17.128072+00:00",
+      "date_derniere_maj": "2026-11-08T18:02:17.134764+00:00",
+      "date_completion": "2026-11-08T18:02:17.134684+00:00",
+      "corrections_demandees": [],
+      "historique": []
+    },
+    {
+      "id": "tache_78e86576",
+      "objectif": "Rédiger un article de blog pour Client Y",
+      "session_id": null,
+      "lane_id": null,
+      "priorite": "normale",
+      "classe_souhaitee": "worker_class_motion_design",
+      "statut": "termine",
+      "etape_actuelle": "rendu_compte",
+      "questions_clarification": [
+        "Quel sujet ?"
+      ],
+      "reponses_clarification": {
+        "Quel sujet ?": "Les bienfaits du motion design"
+      },
+      "plan": {
+        "objectif": "Rédiger un article de blog pour Client Y",
+        "classe_worker": "worker_class_motion_design",
+        "nom_classe": "Motion Design",
+        "etapes": [
+          "1. Clarification des besoins (réponses reçues)",
+          "2. Exécution par le worker assigné",
+          "3. Contrôle qualité par le superviseur",
+          "4. Livraison à l'utilisateur"
+        ],
+        "questions_clarification": [
+          "Quel sujet ?"
+        ],
+        "reponses_clarification": {
+          "Quel sujet ?": "Les bienfaits du motion design"
+        }
+      },
+      "plan_approuve": true,
+      "worker_assigne": "Motion Designer Client X",
+      "worker_id": "worker_98900323",
+      "superviseur_id": null,
+      "resultat": "Article révisé : 800 mots, 3 sources citées, ton professionnel et mesuré.",
+      "probleme": null,
+      "solutions_potentielles": [],
+      "date_creation": "2026-11-08T18:02:25.958867+00:00",
+      "date_derniere_maj": "2026-11-08T18:02:25.966652+00:00",
+      "date_completion": "2026-11-08T18:02:25.966488+00:00",
+      "corrections_demandees": [
+        "Trop court",
+        "Sources non citées",
+        "Ton trop enthousiaste"
+      ],
+      "historique": []
+    },
+    {
+      "id": "tache_226abd66",
+      "objectif": "Analyser des données complexes manquantes",
+      "session_id": null,
+      "lane_id": null,
+      "priorite": "normale",
+      "classe_souhaitee": null,
+      "statut": "en_cours",
+      "etape_actuelle": "execution",
+      "questions_clarification": [],
+      "reponses_clarification": {},
+      "plan": null,
+      "plan_approuve": true,
+      "worker_assigne": null,
+      "worker_id": null,
+      "superviseur_id": null,
+      "resultat": null,
+      "probleme": null,
+      "solutions_potentielles": [],
+      "date_creation": "2026-11-08T18:02:25.968352+00:00",
+      "date_derniere_maj": "2026-11-08T18:02:25.970114+00:00",
+      "date_completion": null,
+      "corrections_demandees": [],
+      "historique": []
+    },
+    {
+      "id": "tache_20fd70de",
+      "objectif": "Analyser des données complexes manquantes",
+      "session_id": null,
+      "lane_id": "lane_analytics",
+      "priorite": "normale",
+      "classe_souhaitee": null,
+      "statut": "en_cours",
+      "etape_actuelle": "execution",
+      "questions_clarification": [],
+      "reponses_clarification": {},
+      "plan": null,
+      "plan_approuve": true,
+      "worker_assigne": null,
+      "worker_id": null,
+      "superviseur_id": null,
+      "resultat": null,
+      "probleme": null,
+      "solutions_potentielles": [],
+      "date_creation": "2026-11-08T18:02:41.943478+00:00",
+      "date_derniere_maj": "2026-11-08T18:02:41.945699+00:00",
+      "date_completion": null,
+      "corrections_demandees": [],
+      "historique": []
+    },
+    {
+      "id": "tache_3eaf1745",
+      "objectif": "Analyser des données complexes manquantes",
+      "session_id": null,
+      "lane_id": "lane_analytics",
+      "priorite": "normale",
+      "classe_souhaitee": null,
+      "statut": "en_cours",
+      "etape_actuelle": "execution",
+      "questions_clarification": [],
+      "reponses_clarification": {},
+      "plan": null,
+      "plan_approuve": true,
+      "worker_assigne": "Coder Python",
+      "worker_id": "worker_09f63e28",
+      "superviseur_id": null,
+      "resultat": null,
+      "probleme": null,
+      "solutions_potentielles": [
+        "Attendre le rétablissement de l'API",
+        "Utiliser un jeu de données de remplacement",
+        "Contacter le fournisseur"
+      ],
+      "date_creation": "2026-11-08T18:02:47.033798+00:00",
+      "date_derniere_maj": "2026-11-08T18:02:47.039456+00:00",
+      "date_completion": null,
+      "corrections_demandees": [],
+      "historique": []
+    }
+  ],
+  "compteur_taches": 5
+}
