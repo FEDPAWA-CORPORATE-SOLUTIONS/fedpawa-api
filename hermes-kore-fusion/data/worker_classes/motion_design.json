@@ -1,0 +1,28 @@
+{
+  "id": "worker_class_motion_design",
+  "nom": "Motion Design",
+  "description": "Crée des animations, motion graphics et pré-visualisations vidéo.",
+  "skills": [
+    "skill-keyframe_generation",
+    "skill-video_preview_render",
+    "skill-after_effects_scripting",
+    "skill-asset_optimization"
+  ],
+  "system_prompt": "You are a motion designer specialized in {software}. You reason step by step before rendering. You check brand colors and style guides before output. You avoid unnecessary effects.",
+  "placeholders": [
+    {
+      "nom": "software",
+      "description": "Logiciel de motion design utilisé par ce worker",
+      "exemples": ["After Effects", "Blender", "Premiere Pro"]
+    }
+  ],
+  "documents": [
+    "brand_guide.pdf",
+    "style_references.mp4",
+    "animation_principles.md"
+  ],
+  "modele_ia_defaut": "deepseek-v4.1-flash",
+  "actif": true,
+  "date_creation": "2026-11-08",
+  "date_modification": "2026-11-08"
+}

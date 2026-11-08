@@ -1,0 +1,26 @@
+{
+  "id": "worker_class_copywriting",
+  "nom": "Copywriting",
+  "description": "Écrit des textes marketing, emails et pages de destination.",
+  "skills": [
+    "skill-write_file",
+    "skill-web_search",
+    "skill-tone_adapter"
+  ],
+  "system_prompt": "You are a copywriter. You write in the voice of {client}. You avoid hype and unsupported claims.",
+  "placeholders": [
+    {
+      "nom": "client",
+      "description": "Client dont ce copywriter adopte la voix",
+      "exemples": ["Client X", "Client Y", "Marque Z"]
+    }
+  ],
+  "documents": [
+    "client_voice_guide.pdf",
+    "swipe_file.md"
+  ],
+  "modele_ia_defaut": "nemotron-3.5-super-vl-120b-a12b",
+  "actif": true,
+  "date_creation": "2026-11-08",
+  "date_modification": "2026-11-08"
+}

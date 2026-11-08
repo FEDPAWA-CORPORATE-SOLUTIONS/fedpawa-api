@@ -1,0 +1,27 @@
+{
+  "id": "worker_class_data_entry",
+  "nom": "Data Entry",
+  "description": "Collecte, nettoie et saisit des données structurées.",
+  "skills": [
+    "skill-web_search",
+    "skill-read_document",
+    "skill-write_file",
+    "skill-validate_format"
+  ],
+  "system_prompt": "You are a data specialist. You validate formats, deduplicate records, and flag anomalies. You never invent data.",
+  "placeholders": [
+    {
+      "nom": "format",
+      "description": "Format de données manipulé par ce worker",
+      "exemples": ["CSV", "JSON", "Excel"]
+    }
+  ],
+  "documents": [
+    "schema_definition.md",
+    "validation_rules.md"
+  ],
+  "modele_ia_defaut": "gpt-oss-120b",
+  "actif": true,
+  "date_creation": "2026-11-08",
+  "date_modification": "2026-11-08"
+}

@@ -1,0 +1,107 @@
+{
+  "version": "1.0",
+  "date_creation": "2026-11-08",
+  "instances": [
+    {
+      "id": "worker_98900323",
+      "nom": "Motion Designer Client X",
+      "class_id": "worker_class_motion_design",
+      "class_nom": "Motion Design",
+      "placeholder_values": {
+        "software": "After Effects"
+      },
+      "system_prompt": "You are a motion designer specialized in After Effects. You reason step by step before rendering. You check brand colors and style guides before output. You avoid unnecessary effects.",
+      "skills_de_classe": [
+        "skill-keyframe_generation",
+        "skill-video_preview_render",
+        "skill-after_effects_scripting",
+        "skill-asset_optimization"
+      ],
+      "skills_de_contexte": [],
+      "lane_id": null,
+      "role": "worker",
+      "statut": "inactif",
+      "tache_courante": null,
+      "modele_ia": "deepseek-v4.1-flash",
+      "date_creation": "2026-11-08T15:07:39.473746+00:00",
+      "derniere_activite": null
+    },
+    {
+      "id": "worker_616b7579",
+      "nom": "Researcher Market",
+      "class_id": "worker_class_research",
+      "class_nom": "Recherche",
+      "placeholder_values": {
+        "domain": "market"
+      },
+      "system_prompt": "You are a researcher. You find primary sources, verify claims, and summarize with citations. You distinguish fact from opinion.",
+      "skills_de_classe": [
+        "skill-web_search",
+        "skill-read_document",
+        "skill-summarize",
+        "skill-cite_sources"
+      ],
+      "skills_de_contexte": [],
+      "lane_id": null,
+      "role": "worker",
+      "statut": "inactif",
+      "tache_courante": null,
+      "modele_ia": "nemotron-3.5-super-vl-120b-a12b",
+      "date_creation": "2026-11-08T15:07:39.474387+00:00",
+      "derniere_activite": null
+    },
+    {
+      "id": "worker_09f63e28",
+      "nom": "Coder Python",
+      "class_id": "worker_class_coding",
+      "class_nom": "Coding",
+      "placeholder_values": {
+        "language": "Python"
+      },
+      "system_prompt": "You are a software implementer specialized in Python. You write clean, tested code. You do not modify files outside the assigned workspace.",
+      "skills_de_classe": [
+        "skill-read_file",
+        "skill-write_file",
+        "skill-execute_command",
+        "skill-debug_log",
+        "skill-git_commit"
+      ],
+      "skills_de_contexte": [
+        "context_skill_262170ae"
+      ],
+      "lane_id": null,
+      "role": "worker",
+      "statut": "inactif",
+      "tache_courante": null,
+      "modele_ia": "deepseek-v4.1-flash",
+      "date_creation": "2026-11-08T15:07:39.474907+00:00",
+      "derniere_activite": "2026-11-08T15:07:39.477144+00:00"
+    },
+    {
+      "id": "worker_7072d37f",
+      "nom": "Copywriter Client X",
+      "class_id": "worker_class_copywriting",
+      "class_nom": "Copywriting",
+      "placeholder_values": {
+        "client": "Client X"
+      },
+      "system_prompt": "You are a copywriter. You write in the voice of Client X. You avoid hype and unsupported claims.",
+      "skills_de_classe": [
+        "skill-write_file",
+        "skill-web_search",
+        "skill-tone_adapter"
+      ],
+      "skills_de_contexte": [
+        "context_skill_c8414565"
+      ],
+      "lane_id": null,
+      "role": "worker",
+      "statut": "inactif",
+      "tache_courante": null,
+      "modele_ia": "nemotron-3.5-super-vl-120b-a12b",
+      "date_creation": "2026-11-08T15:07:39.475295+00:00",
+      "derniere_activite": "2026-11-08T15:07:39.476491+00:00"
+    }
+  ],
+  "compteur_instances": 4
+}

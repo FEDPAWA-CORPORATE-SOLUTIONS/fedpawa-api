@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "date_creation": "2026-11-08",
+  "context_skills": [
+    {
+      "id": "context_skill_c8414565",
+      "nom": "Client X — interdits de ton",
+      "type": "context",
+      "description": "Le client interdit les mots 'révolutionnaire', 'incroyable', 'disruptif'.",
+      "projet_id": "projet_client_x",
+      "appris_par": "worker_7072d37f",
+      "applicable_quand": "Rédaction de tout contenu pour Client X",
+      "assignes_a": [
+        "worker_7072d37f"
+      ],
+      "assignes_par": "admin",
+      "date_creation": "2026-11-08T15:07:39.475692+00:00",
+      "date_derniere_utilisation": null,
+      "actif": true
+    },
+    {
+      "id": "context_skill_262170ae",
+      "nom": "Projet Y — convention de nommage",
+      "type": "context",
+      "description": "Fichiers préfixés par PROJETY-YYYYMMDD-, version en suffixe _vN.",
+      "projet_id": "projet_y",
+      "appris_par": "worker_09f63e28",
+      "applicable_quand": "Création de fichiers dans le projet Y",
+      "assignes_a": [
+        "worker_09f63e28"
+      ],
+      "assignes_par": "admin",
+      "date_creation": "2026-11-08T15:07:39.475997+00:00",
+      "date_derniere_utilisation": null,
+      "actif": true
+    }
+  ],
+  "compteur_skills": 2
+}

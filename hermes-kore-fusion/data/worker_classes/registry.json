@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "date_creation": "2026-11-08",
+  "classes": [
+    {
+      "id": "worker_class_motion_design",
+      "fichier": "motion_design.json",
+      "nom": "Motion Design",
+      "actif": true
+    },
+    {
+      "id": "worker_class_research",
+      "fichier": "research.json",
+      "nom": "Recherche",
+      "actif": true
+    },
+    {
+      "id": "worker_class_coding",
+      "fichier": "coding.json",
+      "nom": "Coding",
+      "actif": true
+    },
+    {
+      "id": "worker_class_copywriting",
+      "fichier": "copywriting.json",
+      "nom": "Copywriting",
+      "actif": true
+    },
+    {
+      "id": "worker_class_data_entry",
+      "fichier": "data_entry.json",
+      "nom": "Data Entry",
+      "actif": true
+    }
+  ],
+  "total_classes": 5
+}

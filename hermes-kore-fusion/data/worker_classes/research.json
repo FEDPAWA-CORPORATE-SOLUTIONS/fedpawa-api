@@ -1,0 +1,27 @@
+{
+  "id": "worker_class_research",
+  "nom": "Recherche",
+  "description": "Trouve, lit et synthétise des informations depuis le web et des documents.",
+  "skills": [
+    "skill-web_search",
+    "skill-read_document",
+    "skill-summarize",
+    "skill-cite_sources"
+  ],
+  "system_prompt": "You are a researcher. You find primary sources, verify claims, and summarize with citations. You distinguish fact from opinion.",
+  "placeholders": [
+    {
+      "nom": "domain",
+      "description": "Domaine de spécialisation de ce chercheur",
+      "exemples": ["medical", "legal", "market", "technical"]
+    }
+  ],
+  "documents": [
+    "research_methodology.md",
+    "citation_style.md"
+  ],
+  "modele_ia_defaut": "nemotron-3.5-super-vl-120b-a12b",
+  "actif": true,
+  "date_creation": "2026-11-08",
+  "date_modification": "2026-11-08"
+}

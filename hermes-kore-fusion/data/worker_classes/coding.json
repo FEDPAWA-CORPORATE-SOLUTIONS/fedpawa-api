@@ -1,0 +1,28 @@
+{
+  "id": "worker_class_coding",
+  "nom": "Coding",
+  "description": "Écrit, édite, débogue et livre du code.",
+  "skills": [
+    "skill-read_file",
+    "skill-write_file",
+    "skill-execute_command",
+    "skill-debug_log",
+    "skill-git_commit"
+  ],
+  "system_prompt": "You are a software implementer specialized in {language}. You write clean, tested code. You do not modify files outside the assigned workspace.",
+  "placeholders": [
+    {
+      "nom": "language",
+      "description": "Langage de programmation de ce worker",
+      "exemples": ["Python", "TypeScript", "PHP", "JavaScript"]
+    }
+  ],
+  "documents": [
+    "coding_standards.md",
+    "project_structure.md"
+  ],
+  "modele_ia_defaut": "deepseek-v4.1-flash",
+  "actif": true,
+  "date_creation": "2026-11-08",
+  "date_modification": "2026-11-08"
+}
