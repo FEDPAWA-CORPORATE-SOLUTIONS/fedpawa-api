@@ -1,0 +1,19 @@
+{
+  "id": "worker_7072d37f",
+  "nom": "Copywriter Client X",
+  "role": "worker",
+  "lane_id": null,
+  "model_actif": "nemotron-3.5-super-vl-120b-a12b",
+  "statut": "INACTIF",
+  "mission_id": null,
+  "narration_finalite": "Worker de classe Copywriting — exécute les tâches de sa spécialité.",
+  "derniere_maj": "2026-11-08T15:07:39.476491+00:00",
+  "skills_utilisees": [
+    "skill-write_file",
+    "skill-web_search",
+    "skill-tone_adapter",
+    "context_skill_c8414565"
+  ],
+  "class_id": "worker_class_copywriting",
+  "class_nom": "Copywriting"
+}

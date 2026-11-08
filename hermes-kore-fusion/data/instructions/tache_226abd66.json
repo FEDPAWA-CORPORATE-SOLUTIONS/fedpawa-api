@@ -1,0 +1,13 @@
+{
+  "id": "tache_226abd66",
+  "texte": "Analyser des données complexes manquantes",
+  "statut": "en_cours",
+  "lane_id": null,
+  "date_creation": "2026-11-08T18:02:25.968352+00:00",
+  "derniere_maj": "2026-11-08T18:02:25.970114+00:00",
+  "worker_assigné": null,
+  "messages_lane": [],
+  "plan_approuve": true,
+  "etape_actuelle": "execution",
+  "resultat": null
+}

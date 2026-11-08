@@ -1,0 +1,13 @@
+{
+  "id": "tache_0b7a1663",
+  "texte": "Produire une vidéo de lancement de 2 minutes pour le produit Client X",
+  "statut": "termine",
+  "lane_id": "lane_marketing",
+  "date_creation": "2026-11-08T18:02:17.128072+00:00",
+  "derniere_maj": "2026-11-08T18:02:17.134764+00:00",
+  "worker_assigné": "Motion Designer Client X",
+  "messages_lane": [],
+  "plan_approuve": true,
+  "etape_actuelle": "rendu_compte",
+  "resultat": "Vidéo de lancement rendue : 2 minutes, motion design épuré, couleurs bleue et blanche respectées, ton professionnel."
+}

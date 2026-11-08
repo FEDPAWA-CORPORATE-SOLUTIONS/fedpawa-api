@@ -1,0 +1,27 @@
+{
+  "timestamp": 1794161092.7934985,
+  "providers": [
+    {
+      "id": "nvidia",
+      "nom": "NVIDIA NIM",
+      "tokens_utilises_min": 0,
+      "tokens_utilises_jour": 0,
+      "limite_min": 60,
+      "limite_jour": 50000,
+      "pourcentage_min": 0,
+      "pourcentage_jour": 0,
+      "alerte": false
+    },
+    {
+      "id": "deepseek",
+      "nom": "DeepSeek",
+      "tokens_utilises_min": 0,
+      "tokens_utilises_jour": 0,
+      "limite_min": 100,
+      "limite_jour": 100000,
+      "pourcentage_min": 0,
+      "pourcentage_jour": 0,
+      "alerte": false
+    }
+  ]
+}

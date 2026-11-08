@@ -1,0 +1,19 @@
+{
+  "id": "worker_98900323",
+  "nom": "Motion Designer Client X",
+  "role": "worker",
+  "lane_id": null,
+  "model_actif": "deepseek-v4.1-flash",
+  "statut": "TERMINE",
+  "mission_id": null,
+  "narration_finalite": "Worker de classe Motion Design — exécute les tâches de sa spécialité.",
+  "derniere_maj": "2026-11-08T18:02:25.967965+00:00",
+  "skills_utilisees": [
+    "skill-keyframe_generation",
+    "skill-video_preview_render",
+    "skill-after_effects_scripting",
+    "skill-asset_optimization"
+  ],
+  "class_id": "worker_class_motion_design",
+  "class_nom": "Motion Design"
+}

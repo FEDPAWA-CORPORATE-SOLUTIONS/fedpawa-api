@@ -1,0 +1,12 @@
+{
+  "cpu_pct": 7.9,
+  "ram_used_mb": 2961.7,
+  "ram_total_mb": 7424.7,
+  "ram_pct": 39.9,
+  "swap_used_mb": 1016.7,
+  "swap_total_mb": 1024.0,
+  "swap_pct": 99.3,
+  "disk_pct": 53.8,
+  "load_avg": "0.67 / 0.42 / 0.3",
+  "timestamp": "2026-11-08T18:04:52Z"
+}

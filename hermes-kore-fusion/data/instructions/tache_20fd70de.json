@@ -1,0 +1,13 @@
+{
+  "id": "tache_20fd70de",
+  "texte": "Analyser des données complexes manquantes",
+  "statut": "en_cours",
+  "lane_id": "lane_analytics",
+  "date_creation": "2026-11-08T18:02:41.943478+00:00",
+  "derniere_maj": "2026-11-08T18:02:41.945699+00:00",
+  "worker_assigné": null,
+  "messages_lane": [],
+  "plan_approuve": true,
+  "etape_actuelle": "execution",
+  "resultat": null
+}

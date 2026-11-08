@@ -1,0 +1,13 @@
+{
+  "id": "tache_78e86576",
+  "texte": "Rédiger un article de blog pour Client Y",
+  "statut": "termine",
+  "lane_id": null,
+  "date_creation": "2026-11-08T18:02:25.958867+00:00",
+  "derniere_maj": "2026-11-08T18:02:25.966652+00:00",
+  "worker_assigné": "Motion Designer Client X",
+  "messages_lane": [],
+  "plan_approuve": true,
+  "etape_actuelle": "rendu_compte",
+  "resultat": "Article révisé : 800 mots, 3 sources citées, ton professionnel et mesuré."
+}

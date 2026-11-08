@@ -1,0 +1,21 @@
+{
+  "id": "worker_09f63e28",
+  "nom": "Coder Python",
+  "role": "worker",
+  "lane_id": null,
+  "model_actif": "deepseek-v4.1-flash",
+  "statut": "EN_COURS",
+  "mission_id": "tache_3eaf1745",
+  "narration_finalite": "Worker de classe Coding — exécute les tâches de sa spécialité.",
+  "derniere_maj": "2026-11-08T18:02:47.037646+00:00",
+  "skills_utilisees": [
+    "skill-read_file",
+    "skill-write_file",
+    "skill-execute_command",
+    "skill-debug_log",
+    "skill-git_commit",
+    "context_skill_262170ae"
+  ],
+  "class_id": "worker_class_coding",
+  "class_nom": "Coding"
+}

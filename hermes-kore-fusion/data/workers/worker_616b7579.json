@@ -1,0 +1,19 @@
+{
+  "id": "worker_616b7579",
+  "nom": "Researcher Market",
+  "role": "worker",
+  "lane_id": null,
+  "model_actif": "nemotron-3.5-super-vl-120b-a12b",
+  "statut": "INACTIF",
+  "mission_id": null,
+  "narration_finalite": "Worker de classe Recherche — exécute les tâches de sa spécialité.",
+  "derniere_maj": "2026-11-08T15:07:39.474387+00:00",
+  "skills_utilisees": [
+    "skill-web_search",
+    "skill-read_document",
+    "skill-summarize",
+    "skill-cite_sources"
+  ],
+  "class_id": "worker_class_research",
+  "class_nom": "Recherche"
+}

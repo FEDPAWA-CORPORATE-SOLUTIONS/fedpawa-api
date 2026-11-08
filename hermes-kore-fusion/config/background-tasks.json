@@ -1,0 +1,44 @@
+{
+  "tâches": [
+    {
+      "id": "bg-rotation-logs",
+      "nom": "Rotation des logs",
+      "categorie": "maintenance",
+      "frequence": "quotidien",
+      "statut": "auto",
+      "derniere_execution": null,
+      "prochaine_execution": null,
+      "description": "Fait pivoter les fichiers de logs pour éviter qu'ils ne grossissent indéfiniment."
+    },
+    {
+      "id": "bg-sante-kore",
+      "nom": "Vérification santé Kore",
+      "categorie": "surveillance",
+      "frequence": "10min",
+      "statut": "auto",
+      "derniere_execution": null,
+      "prochaine_execution": null,
+      "description": "Vérifie que le moteur Kore répond et que le pont MCP est actif."
+    },
+    {
+      "id": "bg-backup-bridge",
+      "nom": "Sauvegarde bridge.jsonl",
+      "categorie": "sauvegarde",
+      "frequence": "quotidien",
+      "statut": "auto",
+      "derniere_execution": null,
+      "prochaine_execution": null,
+      "description": "Sauvegarde le fichier de traçabilité MCP bridge.jsonl."
+    },
+    {
+      "id": "bg-surveillance-swap",
+      "nom": "Surveillance swap",
+      "categorie": "surveillance",
+      "frequence": "5min",
+      "statut": "auto",
+      "derniere_execution": null,
+      "prochaine_execution": null,
+      "description": "Surveille le taux d'utilisation du swap et alerte si saturation."
+    }
+  ]
+}
