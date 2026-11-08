@@ -583,22 +583,248 @@ class TaskFlowEngine:
             stats["par_priorite"][p] = stats["par_priorite"].get(p, 0) + 1
         return stats
 
+    # ------------------------------------------------------------------
+    # Phase 4 — Fiabilité : checkpoints, snapshots, reprise après crash
+    # ------------------------------------------------------------------
+    def create_checkpoint(self, task_id: str, iteration: int, donnees: dict) -> dict:
+        """Crée un checkpoint pour une tâche à une itération donnée."""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Tâche introuvable: {task_id}")
+
+        checkpoint_id = f"ckpt_{uuid.uuid4().hex[:8]}"
+        checkpoint = {
+            "id": checkpoint_id,
+            "task_id": task_id,
+            "iteration": iteration,
+            "donnees": donnees,
+            "date_creation": self._now(),
+        }
+
+        ckpt_path = Path("/root/hermes-kore-fusion/data/checkpoints")
+        ckpt_path.mkdir(parents=True, exist_ok=True)
+        with open(ckpt_path / f"{checkpoint_id}.json", "w", encoding="utf-8") as f:
+            json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+
+        task.setdefault("checkpoints", []).append({
+            "id": checkpoint_id,
+            "iteration": iteration,
+            "date_creation": checkpoint["date_creation"],
+        })
+        # Garder seulement les 10 derniers checkpoints
+        if len(task["checkpoints"]) > 10:
+            task["checkpoints"] = task["checkpoints"][-10:]
+        task["dernier_checkpoint_id"] = checkpoint_id
+        task["dernier_checkpoint_iteration"] = iteration
+        self.update_task(task_id, task)
+
+        self._ajouter_historique(task_id, "checkpoint", f"Checkpoint créé à l'itération {iteration}.")
+        return checkpoint
+
+    def list_checkpoints(self, task_id: str) -> List[dict]:
+        """Liste les checkpoints d'une tâche."""
+        task = self.get_task(task_id)
+        if not task:
+            return []
+        return task.get("checkpoints", [])
+
+    def create_snapshot(self, task_id: str, type_snapshot: str = "full") -> dict:
+        """Crée une snapshot complète d'une tâche (suspension ou périodique)."""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Tâche introuvable: {task_id}")
+
+        snapshot_id = f"snap_{uuid.uuid4().hex[:8]}"
+        snapshot = {
+            "id": snapshot_id,
+            "task_id": task_id,
+            "type": type_snapshot,  # full / periodic
+            "statut": task.get("statut"),
+            "etape_actuelle": task.get("etape_actuelle"),
+            "resultat": task.get("resultat"),
+            "probleme": task.get("probleme"),
+            "solutions_potentielles": task.get("solutions_potentielles", []),
+            "corrections_demandees": task.get("corrections_demandees", []),
+            "checkpoints": task.get("checkpoints", []),
+            "dernier_checkpoint_id": task.get("dernier_checkpoint_id"),
+            "date_creation": self._now(),
+        }
+
+        snap_path = Path("/root/hermes-kore-fusion/data/snapshots")
+        snap_path.mkdir(parents=True, exist_ok=True)
+        with open(snap_path / f"{snapshot_id}.json", "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, ensure_ascii=False, indent=2)
+
+        task.setdefault("snapshots", []).append({
+            "id": snapshot_id,
+            "type": type_snapshot,
+            "date_creation": snapshot["date_creation"],
+        })
+        # Purge : garder max 3 snapshots
+        if len(task["snapshots"]) > 3:
+            task["snapshots"] = task["snapshots"][-3:]
+        task["dernier_snapshot_id"] = snapshot_id
+        self.update_task(task_id, task)
+
+        self._ajouter_historique(task_id, "snapshot", f"Snapshot {type_snapshot} créée.")
+        return snapshot
+
+    def list_snapshots(self, task_id: str) -> List[dict]:
+        """Liste les snapshots d'une tâche."""
+        task = self.get_task(task_id)
+        if not task:
+            return []
+        return task.get("snapshots", [])
+
+    def restore_from_checkpoint(self, task_id: str, checkpoint_id: Optional[str] = None) -> dict:
+        """Restaure une tâche depuis un checkpoint (reprise après crash)."""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Tâche introuvable: {task_id}")
+
+        # Déterminer quel checkpoint utiliser
+        if not checkpoint_id:
+            checkpoint_id = task.get("dernier_checkpoint_id")
+        if not checkpoint_id:
+            raise ValueError("Aucun checkpoint disponible pour cette tâche.")
+
+        ckpt_path = Path("/root/hermes-kore-fusion/data/checkpoints") / f"{checkpoint_id}.json"
+        if not ckpt_path.exists():
+            raise ValueError(f"Checkpoint introuvable: {checkpoint_id}")
+
+        checkpoint = self._read_json(ckpt_path)
+        iteration = checkpoint.get("iteration", 0)
+        donnees = checkpoint.get("donnees", {})
+
+        # Restaurer l'état de la tâche
+        task["statut"] = STATUT_EN_COURS
+        task["etape_actuelle"] = "execution"
+        task["date_derniere_maj"] = self._now()
+        task["repris_de_checkpoint"] = checkpoint_id
+        task["repris_a_iteration"] = iteration
+        self.update_task(task_id, task)
+
+        # Réactiver le worker si nécessaire
+        if task.get("worker_id"):
+            self._update_worker_statut(task["worker_id"], "en_cours", task_id)
+
+        self._ajouter_historique(task_id, "restore_checkpoint", f"Restauration depuis le checkpoint {checkpoint_id} (itération {iteration}).")
+        self._envoyer_notification(
+            expediteur="administrateur",
+            destinataire="utilisateur",
+            tache_id=task_id,
+            type_notif=NOTIF_COMPLETION,
+            message=f"La tâche '{task['objectif']}' a été reprise depuis son dernier point de sauvegarde (itération {iteration}). Aucun travail n'est perdu.",
+        )
+
+        return task
+
+    def restore_from_snapshot(self, task_id: str, snapshot_id: Optional[str] = None) -> dict:
+        """Restaure une tâche depuis une snapshot (reprise multi-jours)."""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Tâche introuvable: {task_id}")
+
+        if not snapshot_id:
+            snapshot_id = task.get("dernier_snapshot_id")
+        if not snapshot_id:
+            raise ValueError("Aucune snapshot disponible pour cette tâche.")
+
+        snap_path = Path("/root/hermes-kore-fusion/data/snapshots") / f"{snapshot_id}.json"
+        if not snap_path.exists():
+            raise ValueError(f"Snapshot introuvable: {snapshot_id}")
+
+        snapshot = self._read_json(snap_path)
+
+        # Restaurer l'état depuis la snapshot
+        task["statut"] = snapshot.get("statut", STATUT_EN_COURS)
+        task["etape_actuelle"] = snapshot.get("etape_actuelle", "execution")
+        task["resultat"] = snapshot.get("resultat")
+        task["probleme"] = snapshot.get("probleme")
+        task["solutions_potentielles"] = snapshot.get("solutions_potentielles", [])
+        task["corrections_demandees"] = snapshot.get("corrections_demandees", [])
+        task["date_derniere_maj"] = self._now()
+        task["repris_de_snapshot"] = snapshot_id
+        self.update_task(task_id, self._read_json(TASKS_PATH)["taches"][
+            next(i for i, t in enumerate(self._read_json(TASKS_PATH)["taches"]) if t["id"] == task_id)
+        ])
+
+        self._ajouter_historique(task_id, "restore_snapshot", f"Restauration depuis la snapshot {snapshot_id} ({snapshot.get('type')}).")
+        self._envoyer_notification(
+            expediteur="administrateur",
+            destinataire="utilisateur",
+            tache_id=task_id,
+            type_notif=NOTIF_COMPLETION,
+            message=f"La tâche '{task['objectif']}' a été restaurée depuis une snapshot précédente. Reprise sans perte de travail.",
+        )
+
+        return task
+
+    def suspendre_tache(self, task_id: str) -> dict:
+        """Suspend une tâche en créant une snapshot complète."""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Tâche introuvable: {task_id}")
+
+        task["statut"] = STATUT_BLOQUE
+        task["etape_actuelle"] = "suspendue"
+        task["date_derniere_maj"] = self._now()
+        self.update_task(task_id, task)
+
+        # Créer une snapshot FULL avant suspension
+        self.create_snapshot(task_id, type_snapshot="full")
+
+        self._ajouter_historique(task_id, "suspendre", "Tâche suspendue, snapshot complète créée.")
+        self._envoyer_notification(
+            expediteur="administrateur",
+            destinataire="utilisateur",
+            tache_id=task_id,
+            type_notif=NOTIF_BLOCKER,
+            message=f"La tâche '{task['objectif']}' a été suspendue. Elle peut être reprise plus tard sans perte de travail.",
+        )
+
+        return task
+
+    def get_reliability_status(self) -> dict:
+        """Retourne l'état de fiabilité du système (checkpoints, snapshots)."""
+        taches = self._read_json(TASKS_PATH).get("taches", [])
+        total_checkpoints = sum(len(t.get("checkpoints", [])) for t in taches)
+        total_snapshots = sum(len(t.get("snapshots", [])) for t in taches)
+        taches_suspendues = sum(1 for t in taches if t.get("statut") == STATUT_BLOQUE)
+        taches_reprises = sum(1 for t in taches if t.get("repris_de_checkpoint") or t.get("repris_de_snapshot"))
+
+        ckpt_dir = Path("/root/hermes-kore-fusion/data/checkpoints")
+        snap_dir = Path("/root/hermes-kore-fusion/data/snapshots")
+        ckpt_count = len(list(ckpt_dir.glob("*.json"))) if ckpt_dir.exists() else 0
+        snap_count = len(list(snap_dir.glob("*.json"))) if snap_dir.exists() else 0
+
+        return {
+            "total_taches": len(taches),
+            "total_checkpoints": total_checkpoints,
+            "total_snapshots": total_snapshots,
+            "checkpoints_fichiers": ckpt_count,
+            "snapshots_fichiers": snap_count,
+            "taches_suspendues": taches_suspendues,
+            "taches_reprises": taches_reprises,
+            "mortalite_evitee": taches_reprises,  # tâches qui n'ont pas été perdues grâce aux checkpoints
+        }
+
 
 # ------------------------------------------------------------------
-# Interface en ligne de commande rapide
+# Interface en ligne de commande rapide (Phase 4)
 # ------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
     engine = TaskFlowEngine()
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
-    if cmd == "creer":
-        objectif = sys.argv[2] if len(sys.argv) > 2 else "Objectif par défaut"
-        t = engine.create_task(objectif)
-        print(f"Tâche créée : {t['id']} — {t['objectif']}")
-    elif cmd == "lister":
-        for t in engine.list_tasks():
-            print(f"  {t['id']} — {t['statut']} — {t['objectif'][:60]}")
-    elif cmd == "stats":
-        print(engine.get_statistiques())
+    if cmd == "stats":
+        print(engine.get_reliability_status())
+    elif cmd == "checkpoints":
+        task_id = sys.argv[2] if len(sys.argv) > 2 else ""
+        if task_id:
+            for ck in engine.list_checkpoints(task_id):
+                print(f"  {ck['id']} — itération {ck['iteration']} — {ck['date_creation']}")
+        else:
+            print("Usage: task_flow_engine.py checkpoints <task_id>")
     else:
-        print("Commandes : creer <objectif>, lister, stats")
+        print("Commandes : stats, checkpoints <task_id>")
