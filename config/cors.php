@@ -1,9 +1,7 @@
 <?php
 
 // ============================================================
-// CORS (audit FIX-SECURITY) — origines restreintes, JAMAIS '*'.
-// APP_URL (prod) + front dev localhost:3000. Utilisé par le
-// middleware global HandleCors (bootstrap/app.php, Laravel 13).
+// CORS — Origine unique : https://www.fedpawa.com
 // ============================================================
 
 return [
@@ -12,12 +10,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_unique(array_filter([
-        env('APP_URL'),
-        'https://www.fedpawa.com',
-        'http://localhost:3000',
-        'http://localhost',
-    ]))),
+    'allowed_origins' => ['https://www.fedpawa.com', 'https://app.fedpawa.com'],
 
     'allowed_origins_patterns' => [],
 

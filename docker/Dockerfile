@@ -57,10 +57,10 @@ RUN php -m | grep -qx pdo_sqlite \
     && php -m | grep -qx bcmath \
     && /usr/bin/python3 --version
 
-COPY php-fpm-www.conf /usr/local/etc/php-fpm.d/www.conf
-COPY php-fedpawa.ini /usr/local/etc/php/conf.d/zz-fedpawa.ini
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/php-fpm-www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/php-fedpawa.ini /usr/local/etc/php/conf.d/zz-fedpawa.ini
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Supprime les pools [www] par defaut (docker.conf / zz-docker.conf) : un seul
 # pool [fedpawa] (root, 127.0.0.1:9000) defini par php-fpm-www.conf.
