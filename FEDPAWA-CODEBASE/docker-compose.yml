@@ -1,0 +1,68 @@
+# ============================================================
+# docker-compose.yml — FEDPAWA full stack (frontend + backend)
+# Orchestre : fedpawa-api (Laravel/PHP 8.5, port 8000) +
+#             fedpawa-next (Next.js, port 3000)
+# ============================================================
+services:
+  fedpawa-api:
+    build:
+      context: ./fedpawa-api
+      dockerfile: docker/Dockerfile
+    container_name: fedpawa-api
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+      - /run:size=128m
+      - /var/log:size=256m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://fedpawa-api:8000
+      - APP_KEY=base64:f9wzBhbma49Rq2c2qSWQe6TKJY2GH1rVv8/T8F+pGms=
+      - DB_CONNECTION=sqlite
+      - SESSION_DRIVER=database
+      - CACHE_STORE=array
+      - QUEUE_CONNECTION=sync
+      - LOG_CHANNEL=stack
+      - BROADCAST_CONNECTION=log
+      - MAIL_MAILER=log
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PORT=6379
+    volumes:
+      - fedpawa-api-storage:/app/storage
+      - fedpawa-api-bootstrap-cache:/app/bootstrap/cache
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/up"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  fedpawa-next:
+    build:
+      context: ./fedpawa-next
+      dockerfile: Dockerfile
+    container_name: fedpawa-next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://fedpawa-api:8000
+      - NEXT_PUBLIC_SIGNATURE_ENABLED=false
+      - NEXT_PUBLIC_ANALYTICS_ENABLED=false
+    ports:
+      - "3003:3000"
+    restart: unless-stopped
+    depends_on:
+      fedpawa-api:
+        condition: service_healthy
+
+volumes:
+  fedpawa-api-storage:
+  fedpawa-api-bootstrap-cache:
