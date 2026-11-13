@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PaiementVerifierRequest;
 use App\Http\Requests\SignatureFinalizeRequest;
 use App\Http\Requests\SouscriptionStoreRequest;
+use App\Models\Client;
 use App\Services\AuditLogger;
 use App\Services\CampayService;
 use App\Services\FactureService;
@@ -220,6 +221,23 @@ class SouscriptionController extends Controller
                     'Votre contrat de domiciliation a été signé et est disponible dans votre espace client.',
                     '/espace-client?tab=documents'
                 );
+
+                // E-mail événementiel : contrat signé (gabarit 06)
+                $client = Client::find($clientId);
+                if ($client) {
+                    $this->notifier->sendEventEmail(
+                        $client,
+                        'contrat_signe',
+                        'Votre contrat est signé — dossier #'.$contratId.' — FEDPAWA',
+                        'emails.06-contrat-signe',
+                        [
+                            'client_nom' => $sub->nom,
+                            'dossier_id' => $contratId,
+                            'date_signature' => now()->format('d/m/Y H:i'),
+                            'lien_contrat' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                        ]
+                    );
+                }
 
                 OtpService::clear($clientId);
                 AuditLogger::log('SUBSCRIPTION_FINALIZED', $clientId, 'client', 'Sub ID: '.$sub->id.' (contrat domiciliation)');

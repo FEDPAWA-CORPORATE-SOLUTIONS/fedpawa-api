@@ -210,6 +210,23 @@ class AuthController extends Controller
                         "Une connexion depuis un nouvel appareil a été détectée (IP {$ip}). Si ce n'est pas vous, changez votre mot de passe immédiatement.",
                         '/espace-client?tab=securite'
                     );
+
+                    // E-mail événementiel : nouvelle connexion (gabarit 11)
+                    $clientModel = Client::find((int) $client->id);
+                    if ($clientModel) {
+                        app(NotificationService::class)->sendEventEmail(
+                            $clientModel,
+                            'compte_securite',
+                            'Nouvelle connexion à votre compte FEDPAWA — vérifiez qu\'il s\'agit bien de vous',
+                            'emails.11-securite-nouvelle-connexion',
+                            [
+                                'date_connexion' => now()->format('d/m/Y H:i'),
+                                'ip_connexion' => $ip,
+                                'appareil' => (string) $request->userAgent(),
+                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=securite',
+                            ]
+                        );
+                    }
                 } else {
                     DB::table('login_devices')->where('id', $device->id)->update([
                         'last_seen_at' => now()->format('Y-m-d H:i:s'),
@@ -517,6 +534,22 @@ class AuthController extends Controller
                 );
             } catch (\Throwable $e) {
                 Log::warning('compte_securite (reset) non fatal : '.$e->getMessage());
+            }
+
+            // E-mail événementiel : mot de passe modifié (gabarit 12)
+            try {
+                app(NotificationService::class)->sendEventEmail(
+                    $client,
+                    'compte_securite',
+                    'Votre mot de passe FEDPAWA a été modifié',
+                    'emails.12-securite-mot-de-passe',
+                    [
+                        'date_modification' => now()->format('d/m/Y H:i'),
+                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=securite',
+                    ]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('securite-mot-de-passe email non fatal : '.$e->getMessage());
             }
 
             return response()->json(['message' => 'Mot de passe mis à jour avec succès']);

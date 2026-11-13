@@ -7,7 +7,9 @@ use App\Http\Requests\TemplateOtpVerifyRequest;
 use App\Http\Requests\TemplateUpdateRequest;
 use App\Http\Requests\TicketReplyRequest;
 use App\Mail\OtpMail;
+use App\Models\Client;
 use App\Services\AuditLogger;
+use App\Services\NotificationService;
 use App\Services\OtpService;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
@@ -40,7 +42,7 @@ class AdminController extends Controller
 
     private const OTP_MAX_ATTEMPTS = 5;
 
-    public function __construct(private PushService $push) {}
+    public function __construct(private PushService $push, private NotificationService $notifier) {}
 
     // =========================================================
     // GET /api/v1/admin/lists — listes enrichies (Lane audit + L011)
@@ -403,6 +405,26 @@ class AdminController extends Controller
                     'Notre équipe a répondu à votre demande de support.',
                     '/espace-client?tab=support'
                 );
+
+                // E-mail événementiel : réponse au ticket (gabarit 09)
+                $client = Client::find((int) $ticket->client_id);
+                if ($client) {
+                    $this->notifier->sendEventEmail(
+                        $client,
+                        'ticket_reponse',
+                        'Réponse à votre ticket #'.$ticketId.' — FEDPAWA',
+                        'emails.09-ticket-reponse',
+                        [
+                            'client_nom' => $ticket->client_nom ?? '',
+                            'ticket_id' => $ticketId,
+                            'ticket_sujet' => $ticket->sujet ?? '',
+                            'agent_nom' => 'Équipe FEDPAWA',
+                            'date_reponse' => now()->format('d/m/Y H:i'),
+                            'reponse_extrait' => mb_strimwidth(trim((string) $reponse), 0, 120, '…'),
+                            'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=support',
+                        ]
+                    );
+                }
             }
 
             return response()->json(['message' => 'Réponse enregistrée']);

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\KycDecisionRequest;
 use App\Http\Requests\KycSubmitRequest;
+use App\Models\Client;
 use App\Services\AuditLogger;
 use App\Services\KycService;
+use App\Services\NotificationService;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class KycController extends Controller
 {
-    public function __construct(private KycService $service, private PushService $push) {}
+    public function __construct(private KycService $service, private PushService $push, private NotificationService $notifier) {}
 
     /** POST /api/v1/kyc/submit */
     public function submit(KycSubmitRequest $request): JsonResponse
@@ -77,6 +79,22 @@ class KycController extends Controller
                         'Votre dossier KYC a été approuvé par notre équipe.',
                         '/espace-client?tab=kyc'
                     );
+
+                    // E-mail événementiel : KYC approuvé (gabarit 08a)
+                    $client = Client::find((int) $kyc->client_id);
+                    if ($client) {
+                        $this->notifier->sendEventEmail(
+                            $client,
+                            'dossier_statut',
+                            'Vos documents KYC sont validés — FEDPAWA',
+                            'emails.08a-dossier-kyc-approuve',
+                            [
+                                'kyc_id' => $id,
+                                'date_maj' => now()->format('d/m/Y H:i'),
+                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=kyc',
+                            ]
+                        );
+                    }
                 } else {
                     $this->push->notifyEvent(
                         (int) $kyc->client_id,
@@ -85,6 +103,23 @@ class KycController extends Controller
                         'Votre dossier KYC a été rejeté. Merci de soumettre des documents corrigés.',
                         '/espace-client?tab=kyc'
                     );
+
+                    // E-mail événementiel : KYC rejeté (gabarit 08b)
+                    $client = Client::find((int) $kyc->client_id);
+                    if ($client) {
+                        $this->notifier->sendEventEmail(
+                            $client,
+                            'dossier_statut',
+                            'Documents KYC à corriger — FEDPAWA',
+                            'emails.08b-dossier-kyc-rejete',
+                            [
+                                'kyc_id' => $id,
+                                'motif_rejet' => $request->input('motif', 'Non spécifié'),
+                                'date_maj' => now()->format('d/m/Y H:i'),
+                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=kyc',
+                            ]
+                        );
+                    }
                 }
             }
 

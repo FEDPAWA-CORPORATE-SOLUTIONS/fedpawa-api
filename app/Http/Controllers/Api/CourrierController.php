@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CourrierAddRequest;
+use App\Models\Client;
+use App\Services\NotificationService;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CourrierController extends Controller
 {
-    public function __construct(private PushService $push) {}
+    public function __construct(private PushService $push, private NotificationService $notifier) {}
 
     /** GET /api/v1/courriers */
     public function index(Request $request): JsonResponse
@@ -67,6 +69,22 @@ class CourrierController extends Controller
                 'Un nouveau courrier vous attend dans votre espace client.',
                 '/espace-client?tab=courriers'
             );
+
+            // E-mail événementiel : nouveau courrier reçu (gabarit 10)
+            $client = Client::find($clientId);
+            if ($client) {
+                $this->notifier->sendEventEmail(
+                    $client,
+                    'courrier_recu',
+                    'Nouveau courrier reçu — FEDPAWA',
+                    'emails.10-courrier-recu',
+                    [
+                        'client_nom' => $client->nom,
+                        'date_reception' => now()->format('d/m/Y H:i'),
+                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=courriers',
+                    ]
+                );
+            }
 
             return response()->json(['message' => 'Courrier ajouté']);
         } catch (\Throwable $e) {

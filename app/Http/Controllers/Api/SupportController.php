@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SupportStoreRequest;
+use App\Models\Client;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Parité de src/Controller/SupportController.php :
@@ -20,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SupportController extends Controller
 {
+    public function __construct(private NotificationService $notifier) {}
+
     /** GET /api/v1/support/tickets */
     public function myTickets(Request $request): JsonResponse
     {
@@ -48,7 +53,7 @@ class SupportController extends Controller
         }
 
         try {
-            DB::table('tickets_support')->insert([
+            $ticketId = DB::table('tickets_support')->insertGetId([
                 'client_id' => $clientId,
                 'sujet' => htmlspecialchars(trim($request->validated('sujet'))),
                 'message' => htmlspecialchars(trim($request->validated('message'))),
@@ -56,7 +61,40 @@ class SupportController extends Controller
                 'created_at' => now()->format('Y-m-d H:i:s'),
             ]);
 
-            return response()->json(['message' => 'Ticket de support envoyé']);
+            // E-mail de confirmation au client
+            $client = Client::find($clientId);
+            if ($client) {
+                $this->notifier->sendEventEmail(
+                    $client,
+                    'ticket_reponse',
+                    'Votre ticket de support a été reçu — FEDPAWA',
+                    'emails.09-ticket-reponse',
+                    [
+                        'client_nom' => $client->nom,
+                        'ticket_id' => $ticketId,
+                        'ticket_sujet' => htmlspecialchars(trim($request->validated('sujet'))),
+                        'agent_nom' => 'Équipe FEDPAWA',
+                        'date_reponse' => now()->format('d/m/Y H:i'),
+                        'reponse_extrait' => 'Votre demande a bien été enregistrée. Un conseiller vous répondra sous les plus brefs délais.',
+                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=support',
+                    ]
+                );
+            }
+
+            // E-mail d'alerte à l'administration
+            try {
+                \Illuminate\Support\Facades\Mail::raw(
+                    'Nouveau ticket de support #'.$ticketId.' de '.htmlspecialchars($client?->nom ?? 'Inconnu').' ('.htmlspecialchars($client?->email ?? '').'). Sujet : '.htmlspecialchars(trim($request->validated('sujet'))).'.',
+                    function ($message) use ($ticketId) {
+                        $message->to(config('mail.from.address', 'contact@fedpawa.com'))
+                            ->subject('Nouveau ticket de support #'.$ticketId.' — FEDPAWA');
+                    }
+                );
+            } catch (\Throwable $mailEx) {
+                Log::warning('Alerte admin nouveau ticket échouée : '.$mailEx->getMessage());
+            }
+
+            return response()->json(['message' => 'Ticket de support envoyé', 'ticket_id' => $ticketId]);
         } catch (\Throwable $e) {
             report($e);
 

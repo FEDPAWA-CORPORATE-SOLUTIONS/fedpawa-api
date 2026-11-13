@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\EventMail;
 use App\Models\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -13,10 +14,48 @@ use Illuminate\Support\Facades\Mail;
  *
  * Push PWA : sendRenewalReminder crée aussi l'événement in-app
  * (type abonnement « Renouvellement proche ») — ancrage du cron legacy.
+ *
+ * Catalogue d'e-mails événementiels (BRIEF-B3) : chaque événement important
+ * dispose d'un gabarit Blade sous resources/views/emails/. La méthode
+ * sendEventEmail() rend le gabarit et l'envoie au client si son adresse
+ * e-mail est vérifiée (gate CONTRAT-VERIF.md).
  */
 class NotificationService
 {
     public function __construct(private PushService $push) {}
+
+    /**
+     * Envoie un e-mail événementiel depuis un gabarit Blade du catalogue.
+     *
+     * @param  array<string, mixed>  $donnees  Variables passées à la vue Blade
+     *                                         (ex: ['$client_nom' => '...', ...])
+     */
+    public function sendEventEmail(Client $client, string $evenement, string $sujet, string $vue, array $donnees = []): bool
+    {
+        // Gate CONTRAT-VERIF.md : aucun e-mail de notification à un client
+        // non vérifié (sauf les e-mails transactionnels d'auth gérés ailleurs).
+        if (! $client->estVerifie()) {
+            \Log::info("NotificationService: e-mail {$evenement} ignoré (e-mail non vérifié) client {$client->id}");
+
+            return false;
+        }
+
+        if (! $this->isConfigured()) {
+            \Log::info("NotificationService: SMTP non configuré — e-mail {$evenement} non envoyé à {$client->email}");
+
+            return false;
+        }
+
+        try {
+            Mail::to($client->email)->send(new EventMail($evenement, $sujet, $vue, $donnees));
+
+            return true;
+        } catch (\Throwable $e) {
+            \Log::warning("NotificationService: échec envoi e-mail {$evenement} à {$client->email} : ".$e->getMessage());
+
+            return false;
+        }
+    }
 
     /**
      * Le transport e-mail est-il réellement configuré (SMTP avec un hôte
