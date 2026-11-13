@@ -186,9 +186,12 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->prefix('admin')->group(function (): void {
             Route::get('/mails', [AdminMailController::class, 'index']);
             Route::get('/mails/count', [AdminMailController::class, 'count']);
+            Route::get('/mails/envoyes', [AdminMailController::class, 'envoyes']);
+            Route::post('/mails', [AdminMailController::class, 'store']);
             Route::post('/mails/tout-lu', [AdminMailController::class, 'toutLu']);
             Route::get('/mails/{id}', [AdminMailController::class, 'show'])->whereNumber('id');
             Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
+            Route::post('/mails/{id}/replier', [AdminMailController::class, 'reply'])->whereNumber('id');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
