@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\KycController;
 use App\Http\Controllers\Api\MailController;
+use App\Http\Controllers\Api\OpenSignController;
 use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
@@ -75,7 +76,16 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/notifications/preferences', [PushController::class, 'preferences']);
         Route::put('/notifications/preferences', [PushController::class, 'updatePreferences']);
     });
-    // ===== Fin section PUSH PWA =====
+    // ===== Section OPENSIGN (signature électronique de contrats) =====
+    // Tous les endpoints nécessitent une authentification Sanctum.
+    // Le token OpenSign est géré uniquement côté backend (OpenSignService).
+    Route::middleware('auth:sanctum')->prefix('opensign')->group(function (): void {
+        Route::post('/signer', [OpenSignController::class, 'signer']);
+        Route::get('/status/{envelopeId}', [OpenSignController::class, 'status'])->where('envelopeId', '.+');
+        Route::get('/download/{documentId}', [OpenSignController::class, 'download'])->where('documentId', '.+');
+        Route::post('/refresh-token', [OpenSignController::class, 'refreshToken']);
+    });
+    // ===== Fin section OPENSIGN =====
 
 
     Route::middleware('auth:sanctum')->group(function (): void {
