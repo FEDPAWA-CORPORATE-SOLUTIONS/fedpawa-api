@@ -101,6 +101,7 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->group(function (): void {
             Route::post('/admin/kyc/approve', [KycController::class, 'approve']);
             Route::post('/admin/kyc/reject', [KycController::class, 'reject']);
+            Route::post('/admin/kyc/a-completer', [KycController::class, 'aCompleter']);
         });
 
         // Facturation

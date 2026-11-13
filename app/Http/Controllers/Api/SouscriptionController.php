@@ -343,6 +343,26 @@ class SouscriptionController extends Controller
                         "Votre abonnement « {$sub->pack} » est actif.",
                         '/espace-client?tab=abonnements'
                     );
+
+                    // E-mail événementiel : abonnement activé (gabarit 13)
+                    $client = Client::find($clientId);
+                    if ($client) {
+                        $this->notifier->sendEventEmail(
+                            $client,
+                            'abonnement',
+                            'Votre abonnement « '.$sub->pack.' » est actif — FEDPAWA',
+                            'emails.13-abonnement-active',
+                            [
+                                'client_nom' => $client->nom,
+                                'pack' => $sub->pack,
+                                'prix' => number_format((float) $sub->prix, 0, ',', ' '),
+                                'devise' => 'XAF',
+                                'date_debut' => now()->format('d/m/Y'),
+                                'periode' => 'mois',
+                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=abonnements',
+                            ]
+                        );
+                    }
                 }
             }
 

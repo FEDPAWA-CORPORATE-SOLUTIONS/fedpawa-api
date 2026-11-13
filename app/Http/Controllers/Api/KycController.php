@@ -11,6 +11,7 @@ use App\Services\KycService;
 use App\Services\NotificationService;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -128,6 +129,62 @@ class KycController extends Controller
             }
 
             return response()->json(['message' => $message]);
+        } catch (\Exception $e) {
+            report($e);
+
+            return response()->json(['error' => 'Erreur interne'], 500);
+        }
+    }
+
+    /** POST /api/v1/admin/kyc/a-completer — marquer un dossier KYC comme à compléter */
+    public function aCompleter(Request $request): JsonResponse
+    {
+        $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'elements_manquants' => ['required', 'string', 'max:500'],
+        ]);
+
+        $id = (int) $request->input('id');
+        $elementsManquants = trim((string) $request->input('elements_manquants'));
+
+        try {
+            $updated = DB::table('kyc')->where('id', $id)->update([
+                'statuts' => 'à_compléter',
+            ]);
+            if ($updated === 0) {
+                return response()->json(['error' => 'Dossier KYC introuvable'], 404);
+            }
+            AuditLogger::log('KYC_A_COMPLETER', $id, 'admin', 'KYC ID: '.$id);
+
+            $kyc = DB::table('kyc')->where('id', $id)->first();
+            if ($kyc && $kyc->client_id) {
+                $this->push->notifyEvent(
+                    (int) $kyc->client_id,
+                    'dossier_statut',
+                    'Votre dossier KYC est à compléter',
+                    'Votre dossier KYC attend encore des éléments de votre part.',
+                    '/espace-client?tab=kyc'
+                );
+
+                // E-mail événementiel : dossier KYC à compléter (gabarit 08c)
+                $client = Client::find((int) $kyc->client_id);
+                if ($client) {
+                    $this->notifier->sendEventEmail(
+                        $client,
+                        'dossier_statut',
+                        'Votre dossier KYC est incomplet — FEDPAWA',
+                        'emails.08c-dossier-kyc-a-completer',
+                        [
+                            'kyc_id' => $id,
+                            'elements_manquants' => $elementsManquants,
+                            'date_maj' => now()->format('d/m/Y H:i'),
+                            'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=kyc',
+                        ]
+                    );
+                }
+            }
+
+            return response()->json(['message' => 'Dossier KYC marqué comme à compléter']);
         } catch (\Exception $e) {
             report($e);
 

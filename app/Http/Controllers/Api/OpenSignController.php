@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
+use App\Models\Contrat;
+use App\Services\NotificationService;
 use App\Services\OpenSignService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -23,7 +27,8 @@ use Illuminate\Support\Facades\Log;
 class OpenSignController extends Controller
 {
     public function __construct(
-        private OpenSignService $opensign
+        private OpenSignService $opensign,
+        private NotificationService $notifier
     ) {}
 
     /**
@@ -69,6 +74,17 @@ class OpenSignController extends Controller
 
             $result = $this->opensign->createEnvelope($payload);
 
+            // Lier l'enveloppe OpenSign au contrat (document_id = id du contrat)
+            $contratId = (int) $request->string('document_id');
+            if ($contratId > 0) {
+                $envelopeId = $result['envelopeId'] ?? $result['id'] ?? $result['objectId'] ?? $result['envelope_id'] ?? null;
+                if ($envelopeId) {
+                    DB::table('contrats')->where('id', $contratId)->update([
+                        'envelope_id' => (string) $envelopeId,
+                    ]);
+                }
+            }
+
             Log::info('OpenSign: envelope created for document '.$request->string('document_id'), [
                 'envelope' => $result,
             ]);
@@ -79,6 +95,30 @@ class OpenSignController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('OpenSign signer error: '.$e->getMessage());
+
+            // Notifier le client si le contrat est identifiable
+            $contratId = (int) $request->string('document_id');
+            if ($contratId > 0) {
+                $contrat = DB::table('contrats')->where('id', $contratId)->first(['client_id']);
+                if ($contrat) {
+                    $client = Client::find((int) $contrat->client_id);
+                    if ($client) {
+                        $this->notifier->sendEventEmail(
+                            $client,
+                            'contrat_scelle',
+                            'Échec de la signature électronique de votre contrat — FEDPAWA',
+                            'emails.07-contrat-scelle',
+                            [
+                                'dossier_id' => $contratId,
+                                'date_scelle' => now()->format('d/m/Y H:i'),
+                                'empreinte_sha256' => '—',
+                                'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                                '_erreur' => $e->getMessage(),
+                            ]
+                        );
+                    }
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -97,12 +137,69 @@ class OpenSignController extends Controller
         try {
             $result = $this->opensign->getEnvelopeStatus($envelopeId);
 
+            // Détecter si l'enveloppe est scellée (statut terminal côté OpenSign)
+            $statutOpenSign = (string) (
+                $result['status'] ?? $result['statut'] ?? $result['etat'] ?? $result['state'] ?? ''
+            );
+            $estScelle = preg_match(
+                '/(completed|signed|sealed|scell.|termin.|done|finalis.)/i',
+                $statutOpenSign
+            ) === 1;
+
+            if ($estScelle) {
+                // Lier l'enveloppe au contrat et mettre à jour la date de scellement
+                $contrat = DB::table('contrats')->where('envelope_id', $envelopeId)->first(['id', 'client_id']);
+                if ($contrat) {
+                    DB::table('contrats')->where('id', (int) $contrat->id)->update([
+                        'date_scelle' => now()->format('Y-m-d H:i:s'),
+                    ]);
+
+                    // E-mail événementiel : contrat scellé (gabarit 07)
+                    $client = Client::find((int) $contrat->client_id);
+                    if ($client) {
+                        $this->notifier->sendEventEmail(
+                            $client,
+                            'contrat_scelle',
+                            'Votre contrat est scellé — dossier #'.(int) $contrat->id.' — FEDPAWA',
+                            'emails.07-contrat-scelle',
+                            [
+                                'dossier_id' => (int) $contrat->id,
+                                'date_scelle' => now()->format('d/m/Y H:i'),
+                                'empreinte_sha256' => $result['empreinte_sha256'] ?? $result['hash'] ?? '—',
+                                'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                            ]
+                        );
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => $result,
             ]);
         } catch (\Exception $e) {
             Log::error('OpenSign status error: '.$e->getMessage());
+
+            // Notifier le client si le contrat est identifiable via l'enveloppe
+            $contrat = DB::table('contrats')->where('envelope_id', $envelopeId)->first(['id', 'client_id']);
+            if ($contrat) {
+                $client = Client::find((int) $contrat->client_id);
+                if ($client) {
+                    $this->notifier->sendEventEmail(
+                        $client,
+                        'contrat_scelle',
+                        'Échec de la signature électronique de votre contrat — FEDPAWA',
+                        'emails.07-contrat-scelle',
+                        [
+                            'dossier_id' => (int) $contrat->id,
+                            'date_scelle' => now()->format('d/m/Y H:i'),
+                            'empreinte_sha256' => '—',
+                            'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                            '_erreur' => $e->getMessage(),
+                        ]
+                    );
+                }
+            }
 
             return response()->json([
                 'success' => false,
