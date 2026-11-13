@@ -5,6 +5,8 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Services\OpenSignErrorMapper;
 
 /**
  * Service d'intégration OpenSign (signature électronique de contrats PDF).
@@ -136,7 +138,7 @@ class OpenSignService
 
         $response = $execute();
 
-        // Renouvellement réactif sur 401
+        // Renouvellement réactif sur 401 (token expiré)
         if ($response->status() === 401) {
             Log::warning('OpenSign: token expired (401), renewing and retrying');
             $token = $this->authenticate()['session_token'];
@@ -151,11 +153,72 @@ class OpenSignService
 
         if ($response->failed()) {
             $body = $response->body();
-            Log::error("OpenSign API error [{$response->status()}] at {$url}: {$body}");
-            throw new \Exception("OpenSign API Error [{$response->status()}]: ".$body);
+            $status = $response->status();
+            $rawException = new \Exception("OpenSign API Error [{$status}]: {$body}");
+
+            // Mapper l'erreur vers un message lisible et structuré
+            $mapped = OpenSignErrorMapper::map($rawException);
+
+            Log::error(
+                "OpenSign API error [{$status}] at {$url}: {$body}",
+                [
+                    'mapped_code' => $mapped['code'],
+                    'mapped_message' => $mapped['message'],
+                    'mapped_action' => $mapped['action'],
+                    'auto_recoverable' => $mapped['auto_recoverable'],
+                    'severity' => $mapped['severity'],
+                ]
+            );
+
+            // Notifier l'administrateur si l'erreur nécessite une intervention
+            if ($mapped['notify_admin']) {
+                $this->notifyAdminError($mapped, $endpoint, $method);
+            }
+
+            // Lever une exception avec le message métier (pas le brut)
+            throw new \Exception(
+                $mapped['message'].' — '.$mapped['action'],
+                $status
+            );
         }
 
         return $response->json() ?? [];
+    }
+
+    /**
+     * Notifie l'administrateur par e-mail d'une erreur OpenSign nécessitant
+     * une intervention manuelle.
+     *
+     * @param  array<string,mixed>  $mapped  résultat de OpenSignErrorMapper::map()
+     * @param  string               $endpoint
+     * @param  string               $method
+     */
+    private function notifyAdminError(array $mapped, string $endpoint, string $method): void
+    {
+        try {
+            $adminEmail = config('mail.from.address', 'contact@fedpawa.com');
+            if ($adminEmail === '') {
+                return;
+            }
+
+            $subject = 'OpenSign — erreur signature ('.$mapped['severity'].')';
+            $body = '
+                <h2>Erreur OpenSign — intervention requise</h2>
+                <p><strong>Opération :</strong> '.$method.' '.$endpoint.'</p>
+                <p><strong>Code :</strong> '.$mapped['code'].'</p>
+                <p><strong>Message :</strong> '.$mapped['message'].'</p>
+                <p><strong>Action recommandée :</strong> '.$mapped['action'].'</p>
+                <p><strong>Gravité :</strong> '.$mapped['severity'].'</p>
+                <hr>
+                <p>Ce message est généré automatiquement par FEDPAWA.</p>
+            ';
+
+            Mail::raw($body, function ($message) use ($adminEmail, $subject) {
+                $message->to($adminEmail)->subject($subject);
+            });
+        } catch (\Throwable $mailEx) {
+            Log::warning('OpenSign: échec envoi notification admin : '.$mailEx->getMessage());
+        }
     }
 
     /* ============================
