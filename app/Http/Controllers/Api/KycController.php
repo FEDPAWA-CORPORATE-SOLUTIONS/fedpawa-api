@@ -62,6 +62,10 @@ class KycController extends Controller
     {
         try {
             $id = (int) $request->input('id');
+            $motif = trim((string) $request->input('motif', ''));
+            if ($statut === 'rejeté' && $motif === '') {
+                return response()->json(['error' => 'Un motif de rejet est requis.'], 400);
+            }
             $updated = DB::table('kyc')->where('id', $id)->update(['statuts' => $statut]);
             if ($updated === 0) {
                 return response()->json(['error' => 'Dossier KYC introuvable'], 404);
@@ -114,7 +118,7 @@ class KycController extends Controller
                             'emails.08b-dossier-kyc-rejete',
                             [
                                 'kyc_id' => $id,
-                                'motif_rejet' => $request->input('motif', 'Non spécifié'),
+                                'motif_rejet' => $motif,
                                 'date_maj' => now()->format('d/m/Y H:i'),
                                 'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=kyc',
                             ]
