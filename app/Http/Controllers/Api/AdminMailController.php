@@ -176,7 +176,7 @@ class AdminMailController extends Controller
                         'corps_html' => $html,
                         'corps_texte' => $texte,
                         'date_envoi' => now()->format('d/m/Y H:i'),
-                        'lien_espace_client' => config('app.url', 'https://app.fedpawa.com').'/admin/mails',
+                        'lien_espace_client' => config('app.url', 'https://www.fedpawa.com').'/admin/mails',
                     ]
                 ));
 
@@ -264,7 +264,7 @@ class AdminMailController extends Controller
                         'corps_texte' => $texte,
                         'date_reception_originale' => $mailRecu->recu_le?->format('d/m/Y H:i'),
                         'date_envoi' => now()->format('d/m/Y H:i'),
-                        'lien_espace_client' => config('app.url', 'https://app.fedpawa.com').'/admin/mails',
+                        'lien_espace_client' => config('app.url', 'https://www.fedpawa.com').'/admin/mails',
                     ]
                 ));
 

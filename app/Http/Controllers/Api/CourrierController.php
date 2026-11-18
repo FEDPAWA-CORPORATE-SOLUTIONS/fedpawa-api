@@ -81,7 +81,7 @@ class CourrierController extends Controller
                     [
                         'client_nom' => $client->nom,
                         'date_reception' => now()->format('d/m/Y H:i'),
-                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=courriers',
+                        'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=courriers',
                     ]
                 );
             }

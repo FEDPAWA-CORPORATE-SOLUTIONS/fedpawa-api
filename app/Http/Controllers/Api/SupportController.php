@@ -76,7 +76,7 @@ class SupportController extends Controller
                         'agent_nom' => 'Équipe FEDPAWA',
                         'date_reponse' => now()->format('d/m/Y H:i'),
                         'reponse_extrait' => 'Votre demande a bien été enregistrée. Un conseiller vous répondra sous les plus brefs délais.',
-                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=support',
+                        'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=support',
                     ]
                 );
             }

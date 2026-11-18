@@ -79,7 +79,7 @@ class AbonnementRenouvellementRappel extends Command
                     'montant' => number_format((float) $sub->prix, 0, ',', ' '),
                     'devise' => 'XAF',
                     'date_renouvellement' => $dateRenouvellement,
-                    'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=abonnements',
+                    'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=abonnements',
                 ]
             );
 

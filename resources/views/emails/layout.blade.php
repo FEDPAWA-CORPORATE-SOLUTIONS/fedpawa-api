@@ -61,7 +61,7 @@
 <tr><td class="em-head" style="padding:26px 40px;border-bottom:1px solid #E2DDD5;background-color:#FFFFFF;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
     <td width="48" valign="middle" style="width:48px;">
-      <img src="https://app.fedpawa.com/icons/icon-512x512.png" width="48" height="48" alt="FEDPAWA" style="display:block;width:48px;height:48px;border:1px solid #D4AF37;border-radius:6px;">
+      <img src="https://www.fedpawa.com/icons/icon-512x512.png" width="48" height="48" alt="FEDPAWA" style="display:block;width:48px;height:48px;border:1px solid #D4AF37;border-radius:6px;">
     </td>
     <td valign="middle" style="padding-left:14px;">
       <div class="em-word" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:22px;font-weight:800;letter-spacing:0.04em;color:#0A1424;line-height:1.1;">FEDPAWA</div>
@@ -76,7 +76,7 @@
 <tr><td class="em-foot" style="padding:30px 40px;background-color:#05080F;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
     <td width="32" valign="top" style="width:32px;">
-      <img src="https://app.fedpawa.com/icons/icon-512x512.png" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border:1px solid #D4AF37;border-radius:6px;">
+      <img src="https://www.fedpawa.com/icons/icon-512x512.png" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border:1px solid #D4AF37;border-radius:6px;">
     </td>
     <td valign="top" style="padding-left:12px;">
       <div class="em-foot-txt" style="font-family:'Playfair Display',Georgia,serif;font-size:14px;font-weight:800;letter-spacing:0.04em;color:#FFFFFF;">FEDPAWA CORPORATE SOLUTIONS</div>
@@ -85,9 +85,9 @@
         &nbsp;·&nbsp; +237 691 70 48 02 &nbsp;·&nbsp; Douala · Logpom · Cameroun<br>
         <span class="em-foot-txt" style="color:#64748B;">Vous recevez cet e-mail transactionnel à l'adresse <strong>{{ $client_email }}</strong> parce que vous avez un compte FEDPAWA CORPORATE SOLUTIONS. Les e-mails transactionnels (vérification, sécurité, documents, paiements) ne comportent pas de lien de désabonnement.</span><br>
         <span class="em-foot-txt" style="color:#64748B;">© {{ $annee }} FEDPAWA CORPORATE SOLUTIONS — </span>
-        <a href="https://app.fedpawa.com/cgu" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">CGU</a>
+        <a href="https://www.fedpawa.com/cgu" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">CGU</a>
         <span class="em-foot-txt" style="color:#64748B;"> · </span>
-        <a href="https://app.fedpawa.com/politique-confidentialite" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">Politique de confidentialité</a>
+        <a href="https://www.fedpawa.com/politique-confidentialite" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">Politique de confidentialité</a>
         <span class="em-foot-txt" style="color:#64748B;"> · Ne répondez pas à ce message : écrivez à contact@fedpawa.com.</span>
       </div>
     </td>

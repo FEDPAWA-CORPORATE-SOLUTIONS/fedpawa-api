@@ -104,7 +104,7 @@ class AuthController extends Controller
             // en prod), email_verification_sent_at = now(). Le token clair ne sort
             // QUE dans l'e-mail, jamais dans la réponse ni les logs applicatifs.
             $token = $client->genererTokenVerification();
-            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            $url = 'https://www.fedpawa.com/verification-email?token='.$token;
             try {
                 app(NotificationService::class)->sendVerificationEmail($client, $url);
             } catch (\Throwable $mailEx) {
@@ -374,7 +374,7 @@ class AuthController extends Controller
             }
 
             $token = $client->genererTokenVerification();
-            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            $url = 'https://www.fedpawa.com/verification-email?token='.$token;
             try {
                 app(NotificationService::class)->sendVerificationEmail($client, $url);
             } catch (\Throwable $mailEx) {

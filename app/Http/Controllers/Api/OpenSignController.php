@@ -112,7 +112,7 @@ class OpenSignController extends Controller
                                 'dossier_id' => $contratId,
                                 'date_scelle' => now()->format('d/m/Y H:i'),
                                 'empreinte_sha256' => '—',
-                                'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                                'lien_preuve_pdf' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=documents',
                                 '_erreur' => $e->getMessage(),
                             ]
                         );
@@ -166,7 +166,7 @@ class OpenSignController extends Controller
                                 'dossier_id' => (int) $contrat->id,
                                 'date_scelle' => now()->format('d/m/Y H:i'),
                                 'empreinte_sha256' => $result['empreinte_sha256'] ?? $result['hash'] ?? '—',
-                                'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                                'lien_preuve_pdf' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=documents',
                             ]
                         );
                     }
@@ -194,7 +194,7 @@ class OpenSignController extends Controller
                             'dossier_id' => (int) $contrat->id,
                             'date_scelle' => now()->format('d/m/Y H:i'),
                             'empreinte_sha256' => '—',
-                            'lien_preuve_pdf' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                            'lien_preuve_pdf' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=documents',
                             '_erreur' => $e->getMessage(),
                         ]
                     );

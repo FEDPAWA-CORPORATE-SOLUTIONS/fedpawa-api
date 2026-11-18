@@ -139,7 +139,7 @@ class NotificationService
      * lien compris, atterrit dans storage/logs/laravel.log) et avec MAIL_MAILER=smtp
      * (prod : Brevo, activé par l'orchestrateur SANS changement de code).
      *
-     * @param  string  $url  URL complète du contrat : https://app.fedpawa.com/verification-email?token=<token>
+     * @param  string  $url  URL complète du contrat : https://www.fedpawa.com/verification-email?token=<token>
      */
     public function sendVerificationEmail(Client $client, string $url): bool
     {

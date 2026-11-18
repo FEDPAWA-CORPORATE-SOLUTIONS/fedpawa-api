@@ -104,7 +104,7 @@ class AuthController extends Controller
             // en prod), email_verification_sent_at = now(). Le token clair ne sort
             // QUE dans l'e-mail, jamais dans la réponse ni les logs applicatifs.
             $token = $client->genererTokenVerification();
-            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            $url = 'https://www.fedpawa.com/verification-email?token='.$token;
             try {
                 app(NotificationService::class)->sendVerificationEmail($client, $url);
             } catch (\Throwable $mailEx) {
@@ -223,7 +223,7 @@ class AuthController extends Controller
                                 'date_connexion' => now()->format('d/m/Y H:i'),
                                 'ip_connexion' => $ip,
                                 'appareil' => (string) $request->userAgent(),
-                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=securite',
+                                'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=securite',
                             ]
                         );
                     }
@@ -391,7 +391,7 @@ class AuthController extends Controller
             }
 
             $token = $client->genererTokenVerification();
-            $url = 'https://app.fedpawa.com/verification-email?token='.$token;
+            $url = 'https://www.fedpawa.com/verification-email?token='.$token;
             try {
                 app(NotificationService::class)->sendVerificationEmail($client, $url);
             } catch (\Throwable $mailEx) {
@@ -545,7 +545,7 @@ class AuthController extends Controller
                     'emails.12-securite-mot-de-passe',
                     [
                         'date_modification' => now()->format('d/m/Y H:i'),
-                        'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=securite',
+                        'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=securite',
                     ]
                 );
             } catch (\Throwable $e) {

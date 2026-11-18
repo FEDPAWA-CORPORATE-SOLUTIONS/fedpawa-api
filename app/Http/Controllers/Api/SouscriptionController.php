@@ -234,7 +234,7 @@ class SouscriptionController extends Controller
                             'client_nom' => $sub->nom,
                             'dossier_id' => $contratId,
                             'date_signature' => now()->format('d/m/Y H:i'),
-                            'lien_contrat' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=documents',
+                            'lien_contrat' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=documents',
                         ]
                     );
                 }
@@ -359,7 +359,7 @@ class SouscriptionController extends Controller
                                 'devise' => 'XAF',
                                 'date_debut' => now()->format('d/m/Y'),
                                 'periode' => 'mois',
-                                'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=abonnements',
+                                'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=abonnements',
                             ]
                         );
                     }

@@ -192,7 +192,7 @@ class EmailService
                 'client_email' => (string) $client->email,
                 'annee' => now()->format('Y'),
                 'devise' => 'XAF',
-                'lien_espace_client' => 'https://app.fedpawa.com/espace-client',
+                'lien_espace_client' => 'https://www.fedpawa.com/espace-client',
             ], $donnees);
 
             $sujet = preg_replace_callback(
