@@ -35,6 +35,7 @@ class PushService
         'ticket_reponse',
         'courrier_recu',
         'compte_securite',
+        'nouvelle_publication',
     ];
 
     /** Libellés français exposés par GET/PUT /notifications/preferences. */
@@ -47,6 +48,7 @@ class PushService
         'ticket_reponse' => 'Réponse à un ticket de support',
         'courrier_recu' => 'Courrier reçu',
         'compte_securite' => 'Sécurité du compte (connexion, mot de passe)',
+        'nouvelle_publication' => 'Nouvelle publication',
     ];
 
     /** Types valides (colonne notification_events.type) : legacy + catalogue. */

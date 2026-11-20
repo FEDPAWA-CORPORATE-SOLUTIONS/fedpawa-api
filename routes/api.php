@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\KycController;
 use App\Http\Controllers\Api\MailController;
-use App\Http\Controllers\Api\OpenSignController;
 use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
@@ -76,21 +75,14 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/notifications/preferences', [PushController::class, 'preferences']);
         Route::put('/notifications/preferences', [PushController::class, 'updatePreferences']);
     });
-    // ===== Section OPENSIGN (signature électronique de contrats) =====
-    // Tous les endpoints nécessitent une authentification Sanctum.
-    // Le token OpenSign est géré uniquement côté backend (OpenSignService).
-    Route::middleware('auth:sanctum')->prefix('opensign')->group(function (): void {
-        Route::post('/signer', [OpenSignController::class, 'signer']);
-        Route::get('/status/{envelopeId}', [OpenSignController::class, 'status'])->where('envelopeId', '.+');
-        Route::get('/download/{documentId}', [OpenSignController::class, 'download'])->where('documentId', '.+');
-        Route::post('/refresh-token', [OpenSignController::class, 'refreshToken']);
-    });
-    // ===== Fin section OPENSIGN =====
+    // ===== Fin section PUSH PWA =====
 
 
     Route::middleware('auth:sanctum')->group(function (): void {
         // Tunnel souscription (flux le plus critique) — gating e-mail vérifié (CONTRAT-VERIF.md)
         Route::post('/souscription', [SouscriptionController::class, 'process'])->middleware('email_verified');
+        Route::post('/souscription/creation-entreprise', [SouscriptionController::class, 'process'])->middleware('email_verified');
+        Route::post('/souscription/conseil-fiscal', [SouscriptionController::class, 'process'])->middleware('email_verified');
         Route::post('/signature', [SouscriptionController::class, 'finalize'])->middleware('email_verified');
         Route::post('/paiement/verifier', [SouscriptionController::class, 'verifyPayment'])->middleware('email_verified');
         Route::get('/contract/preview', [InvoiceController::class, 'previewContract']);
@@ -101,7 +93,11 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->group(function (): void {
             Route::post('/admin/kyc/approve', [KycController::class, 'approve']);
             Route::post('/admin/kyc/reject', [KycController::class, 'reject']);
-            Route::post('/admin/kyc/a-completer', [KycController::class, 'aCompleter']);
+            // Nouveaux endpoints : gestion par document
+            Route::get('/admin/kyc/clients', [KycController::class, 'kycClients']);           // liste clients avec KYC en cours
+            Route::get('/admin/kyc/client/{id}/documents', [KycController::class, 'kycClientDocuments']); // détail documents d'un client
+            Route::post('/admin/kyc/document/decision', [KycController::class, 'documentDecision']); // valider/rejeter un document
+            Route::post('/admin/kyc/client/{id}/complete-batch', [KycController::class, 'completeBatch']); // à compléter + email groupé
         });
 
         // Facturation
@@ -155,6 +151,10 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/admin/template/otp-verify', [AdminController::class, 'templateOtpVerify']);
             Route::post('/admin/template/update', [AdminController::class, 'updateTemplate']);
             Route::post('/admin/ticket/reply', [AdminController::class, 'ticketReply']);
+            // Réinitialisation des tentatives de connexion (throttle) d'un client
+            Route::post('/admin/throttle/reset', [AdminController::class, 'resetThrottle']);
+            // Détails complets d'un client (toutes ses activités)
+            Route::get('/admin/clients/{id}/details', [AdminController::class, 'clientDetails'])->whereNumber('id');
         });
     });
 
@@ -186,12 +186,9 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->prefix('admin')->group(function (): void {
             Route::get('/mails', [AdminMailController::class, 'index']);
             Route::get('/mails/count', [AdminMailController::class, 'count']);
-            Route::get('/mails/envoyes', [AdminMailController::class, 'envoyes']);
-            Route::post('/mails', [AdminMailController::class, 'store']);
             Route::post('/mails/tout-lu', [AdminMailController::class, 'toutLu']);
             Route::get('/mails/{id}', [AdminMailController::class, 'show'])->whereNumber('id');
             Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
-            Route::post('/mails/{id}/replier', [AdminMailController::class, 'reply'])->whereNumber('id');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====

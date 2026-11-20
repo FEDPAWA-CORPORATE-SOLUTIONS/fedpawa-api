@@ -6,11 +6,13 @@ use App\Http\Controllers\Api\Concerns\ResolvesClientId;
 use App\Http\Controllers\Controller;
 use App\Models\Publication;
 use App\Models\PublicationMedia;
+use App\Services\PushService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -26,12 +28,17 @@ use Illuminate\Validation\Rule;
  * - POST   /api/v1/admin/publications/{id}/publier | /depublier
  * - DELETE /api/v1/admin/publications/{id}
  *
+ * À la mise en ligne (statut « publie »), une notification push « nouvelle_publication »
+ * est diffusée à tous les clients abonnés (best-effort, jamais bloquante).
+ *
  * Limites médias (§2, hypothèses révisables) : images jpg/jpeg/png/webp ≤ 5 Mo ;
  * vidéos mp4/webm ≤ 200 Mo (fichier téléversé, Q1.3-A).
  */
 class AdminPublicationController extends Controller
 {
     use ResolvesClientId;
+
+    public function __construct(private PushService $push) {}
 
     /** 5 Mo en Ko (règle Laravel « max » en kilobytes). */
     private const MAX_IMAGE_KO = 5120;
@@ -94,6 +101,11 @@ class AdminPublicationController extends Controller
         };
         $pub->auteur_id = (int) $this->clientId($request);
         $pub->save();
+
+        // Mise en ligne immédiate : push « nouvelle_publication » aux abonnés.
+        if ($pub->statut === 'publie') {
+            $this->notifierAbonneesNouvellePublication($pub);
+        }
 
         return response()->json(['publication' => $this->resource($pub->load('medias'))], 201);
     }
@@ -214,6 +226,9 @@ class AdminPublicationController extends Controller
         }
         $pub->save();
 
+        // Push « nouvelle_publication » aux abonnés au moment de la mise en ligne.
+        $this->notifierAbonneesNouvellePublication($pub);
+
         return response()->json(['publication' => $this->resource($pub)]);
     }
 
@@ -247,6 +262,38 @@ class AdminPublicationController extends Controller
         $pub->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Diffuse un push « nouvelle_publication » à tous les clients disposant
+     * d'au moins une souscription push active. Best-effort : un échec par
+     * destinataire n'interrompt pas la réponse HTTP.
+     *
+     * @param  \App\Models\Publication  $pub
+     * @return void
+     */
+    private function notifierAbonneesNouvellePublication(Publication $pub): void
+    {
+        $clientIds = DB::table('push_subscriptions')
+            ->distinct()
+            ->pluck('client_id');
+
+        $titre = $pub->titre;
+        $corps = $pub->chapeau
+            ? strip_tags($pub->chapeau)
+            : (strlen(strip_tags($pub->contenu)) > 140
+                ? substr(strip_tags($pub->contenu), 0, 137).'…'
+                : strip_tags($pub->contenu));
+
+        foreach ($clientIds as $clientId) {
+            $this->push->notifyEvent(
+                (int) $clientId,
+                'nouvelle_publication',
+                $titre,
+                $corps,
+                '/publications/'.$pub->id
+            );
+        }
     }
 
     // ------------------------------------------------------------------

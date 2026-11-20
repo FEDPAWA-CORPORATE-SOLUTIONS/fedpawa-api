@@ -392,10 +392,12 @@ class AuthController extends Controller
 
             $token = $client->genererTokenVerification();
             $url = 'https://www.fedpawa.com/verification-email?token='.$token;
-            try {
-                app(NotificationService::class)->sendVerificationEmail($client, $url);
-            } catch (\Throwable $mailEx) {
-                Log::warning('Resend verification non envoyé pour '.$client->email.': '.$mailEx->getMessage());
+            $sent = app(NotificationService::class)->sendVerificationEmail($client, $url);
+            if (! $sent) {
+                Log::warning('Resend verification e-mail non envoyé (SMTP échec) pour '.$client->email);
+                return response()->json([
+                    'error' => 'Échec de l\'envoi de l\'e-mail de vérification. Réessayez plus tard.',
+                ], 500);
             }
 
             AuditService::log('VERIFICATION_RESENT', (int) $client->id, 'client', 'Lien de vérification renvoyé');

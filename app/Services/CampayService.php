@@ -31,9 +31,21 @@ class CampayService
         $this->baseUrl = ($mode === 'live')
             ? 'https://www.campay.net'
             : 'https://demo.campay.net';
-        $this->username = (string) (FedpawaConfig::get('CAMPAY_APP_USERNAME', '') ?: FedpawaConfig::get('CAMPAY_USER', 'test_user'));
-        $this->password = (string) (FedpawaConfig::get('CAMPAY_APP_SECRET', '') ?: FedpawaConfig::get('CAMPAY_PASSWORD', 'test_pass'));
-        $tok = FedpawaConfig::get('CAMPAY_TOKEN', '');
+        // Lecture des credentials depuis campay_live.env (via FedpawaConfig).
+        // Clés attendues : CAMPAY_PERMANENT_ACCESS_TOKEN (prioritaire),
+        // CAMPAY_USERNAME (+ CAMPAY_APP_USERNAME en fallback),
+        // CAMPAY_PASSWORD (+ CAMPAY_APP_SECRET en fallback).
+        $this->username = (string) (
+            FedpawaConfig::get('CAMPAY_USERNAME', '')
+            ?: FedpawaConfig::get('CAMPAY_APP_USERNAME', '')
+            ?: FedpawaConfig::get('CAMPAY_USER', 'test_user')
+        );
+        $this->password = (string) (
+            FedpawaConfig::get('CAMPAY_PASSWORD', '')
+            ?: FedpawaConfig::get('CAMPAY_APP_SECRET', '')
+            ?: FedpawaConfig::get('CAMPAY_PASSWORD', 'test_pass')
+        );
+        $tok = FedpawaConfig::get('CAMPAY_PERMANENT_ACCESS_TOKEN', '');
         $this->permanentToken = $tok !== '' ? $tok : null;
     }
 

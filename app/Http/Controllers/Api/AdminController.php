@@ -7,9 +7,15 @@ use App\Http\Requests\TemplateOtpVerifyRequest;
 use App\Http\Requests\TemplateUpdateRequest;
 use App\Http\Requests\TicketReplyRequest;
 use App\Mail\OtpMail;
-use App\Models\Client;
+use App\Models\Abonnement;
+use App\Models\Courrier;
+use App\Models\Contrat;
+use App\Models\Facture;
+use App\Models\Kyc;
+use App\Models\LoginThrottle;
+use App\Models\Paiement;
 use App\Services\AuditLogger;
-use App\Services\NotificationService;
+use App\Services\LoginThrottleService;
 use App\Services\OtpService;
 use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +24,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * Parité de src/Controller/AdminController.php (API JSON uniquement — les vues
@@ -42,7 +51,7 @@ class AdminController extends Controller
 
     private const OTP_MAX_ATTEMPTS = 5;
 
-    public function __construct(private PushService $push, private NotificationService $notifier) {}
+    public function __construct(private PushService $push) {}
 
     // =========================================================
     // GET /api/v1/admin/lists — listes enrichies (Lane audit + L011)
@@ -138,6 +147,12 @@ class AdminController extends Controller
             }
             unset($record);
 
+            // Contact messages (page de contact public) : vus dans l'onglet « Support Client » du dashboard admin.
+            $contactMessages = DB::table('contact_messages')
+                ->orderByDesc('date_reception')->limit(100)
+                ->get(['id', 'nom', 'email', 'telephone', 'sujet', 'message', 'statut', 'date_reception'])
+                ->map(fn ($r) => (array) $r)->all();
+
             return response()->json([
                 'clients' => $clients,
                 'abonnements' => $abonnements,
@@ -147,6 +162,7 @@ class AdminController extends Controller
                 'kyc' => $kyc,
                 'tickets' => $tickets,
                 'messages' => $messages,
+                'contact_messages' => $contactMessages,
             ]);
         } catch (\Throwable $e) {
             report($e);
@@ -405,32 +421,124 @@ class AdminController extends Controller
                     'Notre équipe a répondu à votre demande de support.',
                     '/espace-client?tab=support'
                 );
-
-                // E-mail événementiel : réponse au ticket (gabarit 09)
-                $client = Client::find((int) $ticket->client_id);
-                if ($client) {
-                    $this->notifier->sendEventEmail(
-                        $client,
-                        'ticket_reponse',
-                        'Réponse à votre ticket #'.$ticketId.' — FEDPAWA',
-                        'emails.09-ticket-reponse',
-                        [
-                            'client_nom' => $ticket->client_nom ?? '',
-                            'ticket_id' => $ticketId,
-                            'ticket_sujet' => $ticket->sujet ?? '',
-                            'agent_nom' => 'Équipe FEDPAWA',
-                            'date_reponse' => now()->format('d/m/Y H:i'),
-                            'reponse_extrait' => mb_strimwidth(trim((string) $reponse), 0, 120, '…'),
-                            'lien_action' => config('app.url', 'https://app.fedpawa.com').'/espace-client?tab=support',
-                        ]
-                    );
-                }
             }
 
             return response()->json(['message' => 'Réponse enregistrée']);
         } catch (\Throwable $e) {
             report($e);
 
+            return response()->json(['error' => 'Erreur interne'], 500);
+        }
+    }
+
+    // =========================================================
+    // POST /api/v1/admin/throttle/reset — réinitialiser les tentatives
+    // =========================================================
+    public function resetThrottle(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'user_type' => ['sometimes', 'string', Rule::in(['client', 'admin'])],
+        ]);
+
+        $email = $data['email'];
+        $type = $data['user_type'] ?? 'client';
+
+        $deleted = DB::table('login_throttle')
+            ->where('identifier', $email)
+            ->where('user_type', $type)
+            ->update(['attempts' => 0, 'locked_until' => null]);
+
+        return response()->json([
+            'message' => $deleted > 0 ? 'Tentatives réinitialisées avec succès.' : 'Aucun verrou trouvé pour ce compte.',
+            'cleared' => (bool) $deleted,
+        ]);
+    }
+
+    // =========================================================
+    // GET /api/v1/admin/clients/{id}/details — détails complets d'un client
+    // =========================================================
+    public function clientDetails(Request $request, int $id): JsonResponse
+    {
+        try {
+            $client = DB::table('clients')->where('id', $id)->first();
+            if (! $client) {
+                return response()->json(['error' => 'Client introuvable'], 404);
+            }
+
+            $client = (array) $client;
+            // Masquer les champs sensibles
+            unset($client['mot_de_passe']);
+            unset($client['email_verification_hash']);
+
+            $getTable = function (string $table, array $columns = [], string $order = 'id', string $dir = 'desc') use ($id): array {
+                $query = DB::table($table);
+                if (! empty($columns)) {
+                    $query->select($columns);
+                }
+                if ($table === 'internal_messages') {
+                    $query->where('sender_id', $id)->orWhere('receiver_id', $id);
+                } elseif ($table === 'login_throttle') {
+                    $query->where('identifier', $client['email'] ?? '')->where('user_type', 'client');
+                } else {
+                    $query->where('client_id', $id);
+                }
+                if ($order && in_array($order, Schema::getColumnListing($table))) {
+                    $query->orderBy($order, $dir);
+                }
+                return $query->get()->map(fn ($r) => (array) $r)->all();
+            };
+
+            $abonnements = $getTable('abonnements', [], 'date_debut');
+            $paiements = $getTable('paiements', [], 'date');
+            $factures = $getTable('factures', [], 'date');
+            $contrats = $getTable('contrats', [], 'date_signature');
+            $courriers = $getTable('courriers', [], 'date_reception');
+            $kyc = $getTable('kyc', [], 'date_soumission');
+            $tickets = $getTable('tickets_support', [], 'created_at');
+            $messages = $getTable('internal_messages', [], 'created_at');
+            $publicationLectures = $getTable('publication_lectures', [], 'lu_le');
+            $pushSubscriptions = $getTable('push_subscriptions', [], 'created_at');
+            $notificationEvents = $getTable('notification_events', [], 'created_at');
+            $loginDevices = $getTable('login_devices', [], 'first_seen_at');
+            $passwordResets = $getTable('password_resets', [], 'created_at');
+            $mailsRecus = $getTable('mails_recus', [], 'created_at');
+
+            // Tentative sur les tables optionnelles (peuvent ne pas exister)
+            $contractSigningRequests = [];
+            try {
+                $contractSigningRequests = $getTable('contract_signing_requests', [], 'created_at');
+            } catch (\Throwable $e) {
+                // Table inexistante, on ignore
+            }
+
+            // Statut de verrouillage (throttle)
+            $throttle = DB::table('login_throttle')
+                ->where('identifier', $client['email'] ?? '')
+                ->where('user_type', 'client')
+                ->first();
+
+            return response()->json([
+                'client' => $client,
+                'abonnements' => $abonnements,
+                'paiements' => $paiements,
+                'factures' => $factures,
+                'contrats' => $contrats,
+                'courriers' => $courriers,
+                'kyc' => $kyc,
+                'tickets' => $tickets,
+                'messages' => $messages,
+                'publication_lectures' => $publicationLectures,
+                'push_subscriptions' => $pushSubscriptions,
+                'notification_events' => $notificationEvents,
+                'login_devices' => $loginDevices,
+                'password_resets' => $passwordResets,
+                'mails_recus' => $mailsRecus,
+                'contract_signing_requests' => $contractSigningRequests,
+                'throttle' => $throttle ? (array) $throttle : null,
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
             return response()->json(['error' => 'Erreur interne'], 500);
         }
     }
