@@ -130,13 +130,21 @@ class AuthController extends Controller
             $email = (string) ($input['email'] ?? '');
             $ip = $request->ip();
 
-            // 1) Compte admin ? — message dédié, AUCUN échec throttle (parité PHP)
+            // 1) Compte admin ? — message dédié, échec throttle compté (parité PHP client)
             $admin = Admin::where('email', $email)->first();
             if ($admin) {
                 if (! self::passwordMatches($input['mot_de_passe'], $admin->mot_de_passe)) {
-                    return response()->json([
-                        'error' => 'Ceci est un compte administrateur. Utilisez la page d\'accès admin: /admin_dashboard.html',
-                    ], 401);
+                    $justLocked = LoginThrottleService::recordFailure($email, 'admin', $ip);
+                    if ($justLocked) {
+                        AuditService::log('LOGIN_LOCKED', null, 'admin', "Admin $email verrouillé après 5 échecs (30 min)");
+                    }
+
+                    return response()->json(
+                        $justLocked
+                            ? ['error' => 'Trop de tentatives échouées (5). Votre compte est bloqué pendant 30 minutes.']
+                            : ['error' => 'Ceci est un compte administrateur. Utilisez la page d\'accès admin: /admin_dashboard.html'],
+                        $justLocked ? 429 : 401
+                    );
                 }
                 LoginThrottleService::recordSuccess($email, 'admin');
                 AuditService::log('ADMIN_LOGIN_via_client_form', (int) $admin->id, 'admin', 'Login OK from client form');

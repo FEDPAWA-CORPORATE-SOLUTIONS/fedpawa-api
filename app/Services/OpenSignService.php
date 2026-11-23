@@ -110,6 +110,38 @@ class OpenSignService
     }
 
     /**
+     * Vérifie l'état de santé du token OpenSign pour le monitoring (cron / healthcheck).
+     *
+     * @return array{healthy: bool, reason: string, expires_at: ?string}
+     */
+    public function checkTokenHealth(): array
+    {
+        $session = DB::table('opensign_sessions')->where('id', 1)->first();
+
+        if (!$session || !$session->session_token || !$session->expires_at) {
+            return [
+                'healthy' => false,
+                'reason' => 'Aucun token OpenSign configuré',
+                'expires_at' => null,
+            ];
+        }
+
+        if (now() >= $session->expires_at) {
+            return [
+                'healthy' => false,
+                'reason' => 'Token OpenSign expiré',
+                'expires_at' => $session->expires_at->toDateTimeString(),
+            ];
+        }
+
+        return [
+            'healthy' => true,
+            'reason' => 'Token OpenSign valide',
+            'expires_at' => $session->expires_at->toDateTimeString(),
+        ];
+    }
+
+    /**
      * Appel générique vers l'API OpenSign avec gestion du token et retry sur 401.
      *
      * @param  array<string,mixed>  $data

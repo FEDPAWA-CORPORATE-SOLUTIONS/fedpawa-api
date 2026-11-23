@@ -152,6 +152,8 @@ class OpenSignController extends Controller
                 if ($contrat) {
                     DB::table('contrats')->where('id', (int) $contrat->id)->update([
                         'date_scelle' => now()->format('Y-m-d H:i:s'),
+                        'empreinte_sha256' => $result['empreinte_sha256'] ?? $result['hash'] ?? null,
+                        'certificat_completion' => $result['certificat_completion'] ?? json_encode($result),
                     ]);
 
                     // E-mail événementiel : contrat scellé (gabarit 07)

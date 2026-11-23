@@ -102,16 +102,18 @@ class KycController extends Controller
             'date_decision' => now()->format('Y-m-d H:i:s'),
         ];
 
-        // Recalcul du statut global : si les deux documents sont décidés, le dossier l'est aussi.
-        $fresh = DB::table('kyc')->where('id', (int) $kyc->id)->first();
-        $idStatut = $fresh->piece_identite_statut ?? 'en_cours';
-        $domStatut = $fresh->justificatif_domicile_statut ?? 'en_cours';
-        if ($idStatut !== 'en_cours' && $domStatut !== 'en_cours') {
-            $bothApproved = $idStatut === 'approuvé' && $domStatut === 'approuvé';
-            $updateData['statuts'] = $bothApproved ? 'approuvé' : 'rejeté';
-        }
+        DB::transaction(function () use ($kyc, $documentType, $decision, $motif, $statutColumn, $motifColumn, &$updateData) {
+            // Recalcul du statut global : si les deux documents sont décidés, le dossier l'est aussi.
+            $fresh = DB::table('kyc')->where('id', (int) $kyc->id)->first();
+            $idStatut = $fresh->piece_identite_statut ?? 'en_cours';
+            $domStatut = $fresh->justificatif_domicile_statut ?? 'en_cours';
+            if ($idStatut !== 'en_cours' && $domStatut !== 'en_cours') {
+                $bothApproved = $idStatut === 'approuvé' && $domStatut === 'approuvé';
+                $updateData['statuts'] = $bothApproved ? 'approuvé' : 'rejeté';
+            }
 
-        DB::table('kyc')->where('id', (int) $kyc->id)->update($updateData);
+            DB::table('kyc')->where('id', (int) $kyc->id)->update($updateData);
+        });
 
         AuditLogger::log('KYC_DOCUMENT_DECISION', $clientId, 'admin', "Document {$documentType} → {$decision}".($motif !== '' ? ' | motif: '.$motif : ''));
 
@@ -147,26 +149,28 @@ class KycController extends Controller
 
         // Mise à jour de chaque document concerné
         $details = [];
-        foreach ($events as $evt) {
-            $documentType = $evt['document_type'];
-            $motif = trim((string) $evt['motif']);
-            $statutColumn = $documentType === 'piece_identite' ? 'piece_identite_statut' : 'justificatif_domicile_statut';
-            $motifColumn = $documentType === 'piece_identite' ? 'piece_identite_motif' : 'justificatif_domicile_motif';
+        DB::transaction(function () use ($kyc, $events, $clientId, &$details) {
+            foreach ($events as $evt) {
+                $documentType = $evt['document_type'];
+                $motif = trim((string) $evt['motif']);
+                $statutColumn = $documentType === 'piece_identite' ? 'piece_identite_statut' : 'justificatif_domicile_statut';
+                $motifColumn = $documentType === 'piece_identite' ? 'piece_identite_motif' : 'justificatif_domicile_motif';
 
-            DB::table('kyc')->where('id', (int) $kyc->id)->update([
-                $statutColumn => 'à_compléter',
-                $motifColumn => $motif,
-                'date_decision' => now()->format('Y-m-d H:i:s'),
-            ]);
+                DB::table('kyc')->where('id', (int) $kyc->id)->update([
+                    $statutColumn => 'à_compléter',
+                    $motifColumn => $motif,
+                    'date_decision' => now()->format('Y-m-d H:i:s'),
+                ]);
 
-            $details[] = [
-                'document' => $documentType === 'piece_identite' ? 'Pièce d\'identité' : 'Justificatif de domicile',
-                'action' => 'À compléter',
-                'motif' => $motif,
-            ];
+                $details[] = [
+                    'document' => $documentType === 'piece_identite' ? 'Pièce d\'identité' : 'Justificatif de domicile',
+                    'action' => 'À compléter',
+                    'motif' => $motif,
+                ];
 
-            AuditLogger::log('KYC_DOCUMENT_COMPLETE', $clientId, 'admin', "Document {$documentType} → à_compléter | motif: {$motif}");
-        }
+                AuditLogger::log('KYC_DOCUMENT_COMPLETE', $clientId, 'admin', "Document {$documentType} → à_compléter | motif: {$motif}");
+            }
+        });
 
         // Notification push client (best-effort)
         $client = DB::table('clients')->where('id', $clientId)->first();

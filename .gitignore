@@ -3,6 +3,8 @@
 .env
 .env.backup
 .env.production
+campay_live.env
+mail.env
 .phpactor.json
 .phpunit.result.cache
 /.codex

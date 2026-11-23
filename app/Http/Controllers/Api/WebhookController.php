@@ -42,10 +42,8 @@ class WebhookController extends Controller
                 return response()->json(['error' => 'Signature invalide'], 401);
             }
         } else {
-            // Sans secret configuré : refus net (ultra-sécurisé), sauf env de test local.
-            if (! app()->environment('testing', 'local')) {
-                return response()->json(['error' => 'Signature invalide'], 401);
-            }
+            // Sans secret configuré : refus net dans tous les environnements.
+            return response()->json(['error' => 'Signature invalide'], 401);
         }
 
         $eventId = (string) ($data['event_id'] ?? ($data['reference'] ?? ''));

@@ -85,10 +85,6 @@ class SouscriptionController extends Controller
                     'error' => "Le service de paiement Campay n'est pas configuré. Contactez le support (CAMPAY_APP_USERNAME/CAMPAY_APP_SECRET (ou CAMPAY_APP_ID/CAMPAY_APP_SECRET) ou CAMPAY_TOKEN manquants).",
                 ], 503);
             }
-            // Règle temporaire de test Campay LIVE : numéro 672039863 => 500 FCFA forcé
-            if ((string) ($input['telephone'] ?? '') === '672039863') {
-                $input['prix'] = 500.0;
-            }
             if ($campayEnabled && ! $devis) {
                 try {
                     $payment = $this->campay->collect((float) $input['prix'], (string) ($input['telephone'] ?? ''), 'SUB_'.$sub['subscription_id']);
@@ -143,10 +139,6 @@ class SouscriptionController extends Controller
                 'subscription_id' => $sub['subscription_id'],
                 'client_id' => $sub['client_id'],
             ];
-            if (self::demoMode()) {
-                $payload['signature_otp'] = $otp;
-            }
-
             return response()->json($payload);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
