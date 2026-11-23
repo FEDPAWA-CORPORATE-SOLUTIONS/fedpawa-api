@@ -27,4 +27,13 @@ mail.env
 _ide_helper.php
 Homestead.json
 Homestead.yaml
-Thumbs.db
+# Projets imbriqués (autres dépôts — à extraire)
+KORE-OS_DOCUMENTATION.md
+KORE-OS_DOCUMENTATION.pdf
+KORE-OS_GRAND_PLAN.md
+hermes-kore-fusion/
+FEDPAWA-CODEBASE/
+
+# Scripts de test et cache (à déplacer dans tests/ ou ignorer)
+test_*.php
+.phpunit.result.cache

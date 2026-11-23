@@ -52,7 +52,8 @@ class WebhookController extends Controller
         }
 
         // Idempotence par event_id : déjà traité => 200 sans nouvel effet.
-        $already = DB::table('webhook_events')->where('event_id', $eventId)->first();
+        // Transaction + verrou pour éviter la race condition (double traitement sous charge).
+        $already = DB::table('webhook_events')->where('event_id', $eventId)->lockForUpdate()->first();
         if ($already) {
             return response()->json(['message' => 'Paiement mis à jour']);
         }

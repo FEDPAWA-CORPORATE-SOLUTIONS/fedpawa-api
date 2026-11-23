@@ -18,7 +18,7 @@ class SouscriptionStoreRequest extends FormRequest
             'email' => ['required', 'email'],
             'pack' => ['required', 'string', 'max:255'],
             'nom' => ['required', 'string', 'max:255'],
-            'prix' => ['required', 'numeric', 'gte:0'],
+            'prix' => ['required', 'numeric', 'gte:0', 'lte:1000000'],
             'entreprise' => ['nullable', 'string', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:32'],
             'service' => ['nullable', 'string', 'max:255'],
@@ -121,79 +121,79 @@ class SouscriptionStoreRequest extends FormRequest
     {
         return [
             // Messages communs
-            'email.required' => 'Votre adresse e-mail est obligatoire.',
-            'pack.required' => 'Veuillez sélectionner un pack d'abonnement.',
-            'nom.required' => 'Le nom du demandeur est obligatoire.',
+            'email.required' => "Votre adresse e-mail est obligatoire.",
+            'pack.required' => "Veuillez sélectionner un pack d\'abonnement.",
+            'nom.required' => "Le nom du demandeur est obligatoire.",
 
             // 1. Création d'entreprise
-            'denomination.required' => 'Indiquez la dénomination sociale.',
-            'denomination.min' => 'Minimum 3 caractères.',
-            'forme_juridique.required' => 'Forme juridique obligatoire.',
-            'secteur.required' => 'Secteur d'activité obligatoire.',
-            'description.required' => 'Description détaillée obligatoire (min 50 car.).',
-            'nom_complet.required' => 'Nom du dirigeant obligatoire.',
-            'num_piece.required' => 'Numéro pièce d'identité requis.',
-            'capital_creation.required' => 'Capital minimum 100 000 FCFA.',
-            'capital_creation.min' => 'Capital minimum 100 000 FCFA.',
-            'associes.required' => 'Au moins un associé requis.',
-            'dirigeant.required' => 'Dirigeant obligatoire.',
+            'denomination.required' => "Indiquez la dénomination sociale.",
+            'denomination.min' => "Minimum 3 caractères.",
+            'forme_juridique.required' => "Forme juridique obligatoire.",
+            'secteur.required' => "Secteur d'activité obligatoire.",
+            'description.required' => "Description détaillée obligatoire (min 50 car.).",
+            'nom_complet.required' => "Nom du dirigeant obligatoire.",
+            'num_piece.required' => "Numéro pièce d'identité requis.",
+            'capital_creation.required' => "Capital minimum 100 000 FCFA.",
+            'capital_creation.min' => "Capital minimum 100 000 FCFA.",
+            'associes.required' => "Au moins un associé requis.",
+            'dirigeant.required' => "Dirigeant obligatoire.",
 
             // 2. OAPI
-            'nom_marque.required' => 'Nom de la marque requis.',
-            'nom_marque.min' => 'Minimum 2 caractères.',
-            'type_depot.required' => 'Type de dépôt obligatoire.',
-            'classes_oapi.required' => 'Classes OAPI obligatoires.',
-            'description_oapi.required' => 'Description détaillée nécessaire (min 30 car.).',
+            'nom_marque.required' => "Nom de la marque requis.",
+            'nom_marque.min' => "Minimum 2 caractères.",
+            'type_depot.required' => "Type de dépôt obligatoire.",
+            'classes_oapi.required' => "Classes OAPI obligatoires.",
+            'description_oapi.required' => "Description détaillée nécessaire (min 30 car.).",
 
             // 3. Domiciliation
-            'statut_structure.required' => 'Statut de la structure obligatoire.',
-            'rccm_dom.required_if' => 'RCCM obligatoire pour entreprise existante.',
-            'niu_dom.required_if' => 'NIU obligatoire pour entreprise existante.',
-            'pack_domiciliation.required' => 'Formule de domiciliation obligatoire.',
-            'duree_engagement.required' => 'Durée d'engagement obligatoire.',
+            'statut_structure.required' => "Statut de la structure obligatoire.",
+            'rccm_dom.required_if' => "RCCM obligatoire pour entreprise existante.",
+            'niu_dom.required_if' => "NIU obligatoire pour entreprise existante.",
+            'pack_domiciliation.required' => "Formule de domiciliation obligatoire.",
+            'duree_engagement.required' => "Durée d'engagement obligatoire.",
 
             // 4. Fiscalité
-            'regime_fiscal.required' => 'Régime fiscal obligatoire.',
-            'centre_impots.required' => 'Centre des impôts obligatoire.',
-            'type_service_fiscal.required' => 'Prestation fiscale obligatoire.',
+            'regime_fiscal.required' => "Régime fiscal obligatoire.",
+            'centre_impots.required' => "Centre des impôts obligatoire.",
+            'type_service_fiscal.required' => "Prestation fiscale obligatoire.",
 
             // 5. Contrats
-            'type_contrat.required' => 'Type de contrat obligatoire.',
-            'partie_a.required' => 'Nom de votre structure obligatoire.',
-            'partie_b.required' => 'Nom du cocontractant obligatoire.',
-            'objet_contrat.required' => 'Objet du contrat obligatoire.',
+            'type_contrat.required' => "Type de contrat obligatoire.",
+            'partie_a.required' => "Nom de votre structure obligatoire.",
+            'partie_b.required' => "Nom du cocontractant obligatoire.",
+            'objet_contrat.required' => "Objet du contrat obligatoire.",
 
             // 6. Création dynamique
-            'forme_juridique.required' => 'Forme juridique obligatoire.',
-            'forme_juridique.in' => 'Forme juridique invalide.',
+            'forme_juridique.required' => "Forme juridique obligatoire.",
+            'forme_juridique.in' => "Forme juridique invalide.",
 
             // 7. OAPI dynamique
-            'typeActif.required' => 'Type d'actif obligatoire.',
-            'typeActif.in' => 'Type d'actif invalide.',
-            'nomMarque.required' => 'Nom de la marque obligatoire.',
-            'nomMarque.min' => 'Nom de la marque minimum 2 caractères.',
-            'classes.required' => 'Classes OAPI obligatoires.',
+            'typeActif.required' => "Type d'actif obligatoire.",
+            'typeActif.in' => "Type d'actif invalide.",
+            'nomMarque.required' => "Nom de la marque obligatoire.",
+            'nomMarque.min' => "Nom de la marque minimum 2 caractères.",
+            'classes.required' => "Classes OAPI obligatoires.",
 
             // 8. Fiscalité dynamique
-            'regime.required' => 'Régime fiscal obligatoire.',
-            'centreImpots.required' => 'Centre des impôts obligatoire.',
-            'acf.required' => 'ACF obligatoire.',
-            'declarations.required' => 'Déclarations obligatoires.',
+            'regime.required' => "Régime fiscal obligatoire.",
+            'centreImpots.required' => "Centre des impôts obligatoire.",
+            'acf.required' => "ACF obligatoire.",
+            'declarations.required' => "Déclarations obligatoires.",
 
             // 9. Contrats dynamiques
-            'typeContrat.required' => 'Type de contrat obligatoire.',
-            'typeContrat.in' => 'Type de contrat invalide.',
-            'cocontractant.required' => 'Nom du cocontractant obligatoire.',
-            'langue.required' => 'Langue du contrat obligatoire.',
-            'langue.in' => 'Langue invalide.',
+            'typeContrat.required' => "Type de contrat obligatoire.",
+            'typeContrat.in' => "Type de contrat invalide.",
+            'cocontractant.required' => "Nom du cocontractant obligatoire.",
+            'langue.required' => "Langue du contrat obligatoire.",
+            'langue.in' => "Langue invalide.",
 
             // 10. Recouvrement dynamiques
-            'montant.required' => 'Montant obligatoire.',
-            'montant.min' => 'Montant doit être positif.',
-            'nbDebiteurs.required' => 'Nombre de débiteurs obligatoire.',
-            'nbDebiteurs.min' => 'Au moins 1 débiteur requis.',
-            'nature.required' => 'Nature de la créance obligatoire.',
-            'historique.required' => 'Historique obligatoire.',
+            'montant.required' => "Montant obligatoire.",
+            'montant.min' => "Montant doit être positif.",
+            'nbDebiteurs.required' => "Nombre de débiteurs obligatoire.",
+            'nbDebiteurs.min' => "Au moins 1 débiteur requis.",
+            'nature.required' => "Nature de la créance obligatoire.",
+            'historique.required' => "Historique obligatoire.",
         ];
     }
 }

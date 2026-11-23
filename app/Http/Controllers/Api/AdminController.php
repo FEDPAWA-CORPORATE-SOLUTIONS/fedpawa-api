@@ -60,54 +60,45 @@ class AdminController extends Controller
     {
         try {
             $clients = DB::table('clients')
-                ->orderByDesc('id')->limit(200)
-                ->get(['id', 'nom', 'entreprise', 'email', 'telephone', 'date_inscription'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('id')
+                ->paginate(25, ['id', 'nom', 'entreprise', 'email', 'telephone', 'date_inscription']);
 
             $abonnements = DB::table('abonnements as a')
                 ->join('clients as c', 'c.id', '=', 'a.client_id')
-                ->orderByDesc('a.id')->limit(200)
-                ->get(['a.id', 'a.client_id', 'c.nom as client_nom', 'c.entreprise', 'a.pack', 'a.prix', 'a.date_debut', 'a.date_fin', 'a.statut'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('a.id')
+                ->paginate(25, ['a.id', 'a.client_id', 'c.nom as client_nom', 'c.entreprise', 'a.pack', 'a.prix', 'a.date_debut', 'a.date_fin', 'a.statut']);
 
             $paiements = DB::table('paiements as p')
                 ->leftJoin('clients as c', 'c.id', '=', 'p.client_id')
-                ->orderByDesc('p.id')->limit(200)
-                ->get(['p.id', 'p.client_id', 'c.nom as client_nom', 'c.entreprise', 'p.montant', 'p.mode_paiement', 'p.transaction_id', 'p.date', 'p.statut'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('p.id')
+                ->paginate(25, ['p.id', 'p.client_id', 'c.nom as client_nom', 'c.entreprise', 'p.montant', 'p.mode_paiement', 'p.transaction_id', 'p.date', 'p.statut']);
 
             $courriers = DB::table('courriers as co')
                 ->leftJoin('clients as c', 'c.id', '=', 'co.client_id')
-                ->orderByDesc('co.id')->limit(200)
-                ->get(['co.id', 'co.client_id', 'c.nom as client_nom', 'c.entreprise', 'co.date_reception', 'co.scan', 'co.statut'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('co.id')
+                ->paginate(25, ['co.id', 'co.client_id', 'c.nom as client_nom', 'c.entreprise', 'co.date_reception', 'co.scan', 'co.statut']);
 
             $contrats = DB::table('contrats as ct')
                 ->leftJoin('clients as c', 'c.id', '=', 'ct.client_id')
-                ->orderByDesc('ct.id')->limit(200)
-                ->get(['ct.id', 'ct.client_id', 'c.nom as client_nom', 'c.entreprise', 'ct.type', 'ct.fichier', 'ct.date_signature'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('ct.id')
+                ->paginate(25, ['ct.id', 'ct.client_id', 'c.nom as client_nom', 'c.entreprise', 'ct.type', 'ct.fichier', 'ct.date_signature']);
 
             $kyc = DB::table('kyc as k')
                 ->join('clients as c', 'c.id', '=', 'k.client_id')
-                ->orderByDesc('k.id')->limit(200)
-                ->get(['k.id', 'k.client_id', 'c.nom as client_nom', 'c.entreprise', 'k.piece_identite', 'k.justificatif_domicile', 'k.statuts', 'k.date_soumission'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('k.id')
+                ->paginate(25, ['k.id', 'k.client_id', 'c.nom as client_nom', 'c.entreprise', 'k.piece_identite', 'k.justificatif_domicile', 'k.statuts', 'k.date_soumission']);
 
             $tickets = DB::table('tickets_support as t')
                 ->join('clients as c', 'c.id', '=', 't.client_id')
-                ->orderByDesc('t.created_at')->limit(100)
-                ->get(['t.*', 'c.nom as client_nom'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('t.created_at')
+                ->paginate(25, ['t.*', 'c.nom as client_nom']);
 
             $messages = DB::table('internal_messages as m')
                 ->leftJoin('clients as c', 'c.id', '=', 'm.sender_id')
-                ->orderByDesc('m.created_at')->limit(100)
-                ->get(['m.id', 'm.sender_id', 'm.sender_type', 'm.receiver_id', 'm.content', 'm.is_read', 'm.created_at', 'c.nom as client_nom', 'c.entreprise'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('m.created_at')
+                ->paginate(25, ['m.id', 'm.sender_id', 'm.sender_type', 'm.receiver_id', 'm.content', 'm.is_read', 'm.created_at', 'c.nom as client_nom', 'c.entreprise']);
 
             // L011 — doc_exists : le fichier existe RÉELLEMENT sur le disque.
-            // Contrats : storage/documents/ ; courriers + KYC : storage/uploads/.
             $fileExists = function (?string $relPath, bool $uploadsFirst): bool {
                 if ($relPath === null || $relPath === '' || str_contains($relPath, '..')) {
                     return false;
@@ -130,28 +121,26 @@ class AdminController extends Controller
                 return false;
             };
 
-            foreach ($courriers as &$courrier) {
+            foreach ($courriers->items() as &$courrier) {
                 $courrier['doc_exists'] = ! empty($courrier['scan']) && $fileExists($courrier['scan'], true);
             }
             unset($courrier);
 
-            foreach ($contrats as &$contrat) {
+            foreach ($contrats->items() as &$contrat) {
                 $contrat['doc_exists'] = ! empty($contrat['fichier']) && $fileExists($contrat['fichier'], false);
             }
             unset($contrat);
 
-            foreach ($kyc as &$record) {
+            foreach ($kyc->items() as &$record) {
                 $record['doc_exists_identite'] = ! empty($record['piece_identite']) && $fileExists($record['piece_identite'], true);
                 $record['doc_exists_justificatif'] = ! empty($record['justificatif_domicile']) && $fileExists($record['justificatif_domicile'], true);
                 $record['doc_exists'] = $record['doc_exists_identite'] || $record['doc_exists_justificatif'];
             }
             unset($record);
 
-            // Contact messages (page de contact public) : vus dans l'onglet « Support Client » du dashboard admin.
             $contactMessages = DB::table('contact_messages')
-                ->orderByDesc('date_reception')->limit(100)
-                ->get(['id', 'nom', 'email', 'telephone', 'sujet', 'message', 'statut', 'date_reception'])
-                ->map(fn ($r) => (array) $r)->all();
+                ->orderByDesc('date_reception')
+                ->paginate(25, ['id', 'nom', 'email', 'telephone', 'sujet', 'message', 'statut', 'date_reception']);
 
             return response()->json([
                 'clients' => $clients,
@@ -269,9 +258,9 @@ class AdminController extends Controller
                 Log::error('OTP admin mail envoi échoué: '.$mailEx->getMessage());
             }
             if (! $sent) {
-                // SMTP non configuré (local) : le code reste côté serveur,
-                // dans les logs — jamais exposé dans la réponse HTTP.
-                Log::info('[OTP-ADMIN-DEV] code pour '.$adminEmail.' : '.$otp);
+                // SMTP non configuré : le code OTP n'est JAMAIS journalisé en clair.
+                // Seul l'envoi (ou l'échec) est consigné, sans le code ni l'email en clair.
+                Log::warning('OTP admin : envoi SMTP échoué, code non journalisé.');
             }
 
             AuditLogger::log(
@@ -500,9 +489,13 @@ class AdminController extends Controller
             $publicationLectures = $getTable('publication_lectures', [], 'lu_le');
             $pushSubscriptions = $getTable('push_subscriptions', [], 'created_at');
             $notificationEvents = $getTable('notification_events', [], 'created_at');
-            $loginDevices = $getTable('login_devices', [], 'first_seen_at');
-            $passwordResets = $getTable('password_resets', [], 'created_at');
+            $loginDevices = $getTable('login_devices', ['id', 'client_id', 'ua_hash', 'first_seen_at', 'last_seen_at'], 'first_seen_at');
             $mailsRecus = $getTable('mails_recus', [], 'created_at');
+            // Masquer les corps des e-mails reçus (fuite de données sensibles)
+            foreach ($mailsRecus as &$mail) {
+                unset($mail['corps_html'], $mail['corps_texte']);
+            }
+            unset($mail);
 
             // Tentative sur les tables optionnelles (peuvent ne pas exister)
             $contractSigningRequests = [];
@@ -532,7 +525,6 @@ class AdminController extends Controller
                 'push_subscriptions' => $pushSubscriptions,
                 'notification_events' => $notificationEvents,
                 'login_devices' => $loginDevices,
-                'password_resets' => $passwordResets,
                 'mails_recus' => $mailsRecus,
                 'contract_signing_requests' => $contractSigningRequests,
                 'throttle' => $throttle ? (array) $throttle : null,

@@ -21,6 +21,7 @@ use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -90,12 +91,14 @@ class AuthController extends Controller
                 'role' => 'client',
             ]);
 
-            // Utilisateur Sanctum aligné (même email que le client métier)
-            User::create([
-                'name' => $client->nom,
-                'email' => $client->email,
-                'password' => $data['mot_de_passe'],
-            ]);
+            // Utilisateur Sanctum aligné (même email que le client métier) — transaction pour éviter le client orphelin.
+            DB::transaction(function () use ($client, $data) {
+                User::create([
+                    'name' => $client->nom,
+                    'email' => $client->email,
+                    'password' => $data['mot_de_passe'],
+                ]);
+            });
 
             AuditService::log('REGISTER', (int) $client->id, 'client', 'Compte créé');
 
@@ -199,47 +202,38 @@ class AuthController extends Controller
             // Notification catalogue : compte_securite — connexion depuis un nouvel appareil
             try {
                 $uaHash = hash('sha256', (string) $request->userAgent());
-                $device = DB::table('login_devices')
-                    ->where('client_id', (int) $client->id)
-                    ->where('ua_hash', $uaHash)
-                    ->first();
-                if (! $device) {
-                    DB::table('login_devices')->insert([
-                        'client_id' => (int) $client->id,
-                        'ua_hash' => $uaHash,
-                        'ip' => $ip,
-                        'first_seen_at' => now()->format('Y-m-d H:i:s'),
-                        'last_seen_at' => now()->format('Y-m-d H:i:s'),
-                    ]);
-                    app(PushService::class)->notifyEvent(
-                        (int) $client->id,
-                        'compte_securite',
-                        'Nouvelle connexion à votre compte',
-                        "Une connexion depuis un nouvel appareil a été détectée (IP {$ip}). Si ce n'est pas vous, changez votre mot de passe immédiatement.",
-                        '/espace-client?tab=securite'
-                    );
+                // insertOrIgnore évite la race condition (nécessite UNIQUE(client_id, ua_hash)).
+                DB::table('login_devices')->insertOrIgnore([
+                    'client_id' => (int) $client->id,
+                    'ua_hash' => $uaHash,
+                    'ip' => $ip,
+                    'first_seen_at' => now()->format('Y-m-d H:i:s'),
+                    'last_seen_at' => now()->format('Y-m-d H:i:s'),
+                ]);
 
-                    // E-mail événementiel : nouvelle connexion (gabarit 11)
-                    $clientModel = Client::find((int) $client->id);
-                    if ($clientModel) {
-                        app(NotificationService::class)->sendEventEmail(
-                            $clientModel,
-                            'compte_securite',
-                            'Nouvelle connexion à votre compte FEDPAWA — vérifiez qu\'il s\'agit bien de vous',
-                            'emails.11-securite-nouvelle-connexion',
-                            [
-                                'date_connexion' => now()->format('d/m/Y H:i'),
-                                'ip_connexion' => $ip,
-                                'appareil' => (string) $request->userAgent(),
-                                'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=securite',
-                            ]
-                        );
-                    }
-                } else {
-                    DB::table('login_devices')->where('id', $device->id)->update([
-                        'last_seen_at' => now()->format('Y-m-d H:i:s'),
-                        'ip' => $ip,
-                    ]);
+                app(PushService::class)->notifyEvent(
+                    (int) $client->id,
+                    'compte_securite',
+                    'Nouvelle connexion à votre compte',
+                    "Une connexion depuis un nouvel appareil a été détectée (IP {$ip}). Si ce n'est pas vous, changez votre mot de passe immédiatement.",
+                    '/espace-client?tab=securite'
+                );
+
+                // E-mail événementiel : nouvelle connexion (gabarit 11)
+                $clientModel = Client::find((int) $client->id);
+                if ($clientModel) {
+                    app(NotificationService::class)->sendEventEmail(
+                        $clientModel,
+                        'compte_securite',
+                        'Nouvelle connexion à votre compte FEDPAWA — vérifiez qu\'il s\'agit bien de vous',
+                        'emails.11-securite-nouvelle-connexion',
+                        [
+                            'date_connexion' => now()->format('d/m/Y H:i'),
+                            'ip_connexion' => $ip,
+                            'appareil' => (string) $request->userAgent(),
+                            'lien_action' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=securite',
+                        ]
+                    );
                 }
             } catch (\Throwable $e) {
                 Log::warning('compte_securite (login) non fatal : '.$e->getMessage());
@@ -326,6 +320,17 @@ class AuthController extends Controller
     public function verifyEmail(VerifyEmailRequest $request): JsonResponse
     {
         try {
+            // Rate-limit : max 10 tentatives par heure par IP.
+            $ip = $request->ip();
+            $rlKey = 'verify_email_'.md5($ip);
+            $rlCount = (int) Cache::increment($rlKey, 1);
+            if ($rlCount === 1) {
+                Cache::put($rlKey, $rlCount, now()->addHour());
+            }
+            if ($rlCount > 10) {
+                return response()->json(['error' => 'Trop de tentatives de vérification. Réessayez plus tard.'], 429);
+            }
+
             $token = (string) $request->validated('token');
 
             $client = Client::trouverParTokenVerification($token);
@@ -427,6 +432,17 @@ class AuthController extends Controller
         try {
             $email = (string) $request->validated('email');
             $generic = 'Si cet e-mail existe, un code de réinitialisation a été envoyé.';
+
+            // Rate-limit : max 3 envois par heure par adresse e-mail.
+            $rlKey = 'forgot_password_'.md5($email);
+            $rlCount = (int) Cache::increment($rlKey, 1);
+            if ($rlCount === 1) {
+                Cache::put($rlKey, $rlCount, now()->addHour());
+            }
+            if ($rlCount > 3) {
+                return response()->json(['error' => 'Trop de demandes de réinitialisation. Réessayez plus tard.'], 429);
+            }
+
             $client = Client::where('email', $email)->first();
 
             if (! $client) {

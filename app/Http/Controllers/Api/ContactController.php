@@ -40,7 +40,8 @@ class ContactController extends Controller
             // silencieusement. TrimStrings exclut 'site' (bootstrap) pour
             // que les espaces arrivent intacts jusqu'ici.
             if (($data['site'] ?? '') !== '') {
-                return response()->json(['message' => 'Merci ! Votre message a bien été envoyé.']);
+                // Honeypot : le champ 'site' est rempli → requête suspecte, refus clair.
+                return response()->json(['error' => 'Requête invalide'], 400);
             }
 
             DB::table('contact_messages')->insert([
@@ -61,6 +62,7 @@ class ContactController extends Controller
                 );
             } catch (\Throwable $mailEx) {
                 Log::error('Contact mail échoué: '.$mailEx->getMessage());
+                report($mailEx);
             }
 
             return response()->json([

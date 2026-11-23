@@ -48,13 +48,16 @@ class DashboardController extends Controller
             ->orderByDesc('id')->get()->map(fn ($r) => (array) $r)->all();
 
         $factures = DB::table('factures')->where('client_id', $clientId)
-            ->orderByDesc('id')->get()->map(fn ($r) => (array) $r)->all();
+            ->orderByDesc('id')
+            ->paginate(20, ['id', 'numero', 'montant', 'date', 'lien_pdf']);
 
         $contrats = DB::table('contrats')->where('client_id', $clientId)
-            ->orderByDesc('id')->get()->map(fn ($r) => (array) $r)->all();
+            ->orderByDesc('id')
+            ->paginate(20, ['id', 'client_id', 'type', 'fichier', 'date_signature', 'date_scelle']);
 
         $courriers = DB::table('courriers')->where('client_id', $clientId)
-            ->orderByDesc('id')->get()->map(fn ($r) => (array) $r)->all();
+            ->orderByDesc('id')
+            ->paginate(20, ['id', 'client_id', 'scan', 'date_reception', 'statut']);
 
         $kyc = DB::table('kyc')->where('client_id', $clientId)
             ->orderByDesc('id')->first();

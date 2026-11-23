@@ -66,7 +66,7 @@ class SupportController extends Controller
             if ($client) {
                 $this->notifier->sendEventEmail(
                     $client,
-                    'ticket_reponse',
+                    'ticket_cree',
                     'Votre ticket de support a été reçu — FEDPAWA',
                     'emails.09-ticket-reponse',
                     [
