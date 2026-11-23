@@ -29,6 +29,37 @@ use Illuminate\Support\Facades\Storage;
  */
 class SouscriptionController extends Controller
 {
+    /** Catalogue de packs côté serveur (prix mensuel en FCFA — source de vérité). */
+    private const PACKS_SERVER = [
+        'national-essential' => 25000,
+        'national-business' => 45000,
+        'national-premium' => 70000,
+        'international-essential' => 50000,
+        'international-business' => 110000,
+        'international-premium' => 175000,
+    ];
+
+    /** Multiplicateurs de périodicité (en mois). */
+    private const PERIODICITE_MOIS = [
+        'mensuel' => 1,
+        'semestriel' => 6,
+        'annuel' => 12,
+    ];
+
+    /**
+     * Recalcule le prix officiel côté serveur depuis le pack et la périodicité.
+     *
+     * @param  string  $pack  Code du pack (ex: 'national-essential')
+     * @param  string|null  $periodicite  'mensuel', 'semestriel' ou 'annuel'
+     * @return float Prix mensuel total en FCFA
+     */
+    private function prixServeur(string $pack, ?string $periodicite = null): float
+    {
+        $prixMensuel = self::PACKS_SERVER[$pack] ?? 0.0;
+        $mois = self::PERIODICITE_MOIS[$periodicite ?? 'mensuel'] ?? 1;
+
+        return (float) $prixMensuel * (float) $mois;
+    }
     public function __construct(
         private SubscriptionService $subService,
         private PdfService $pdfService,
@@ -67,7 +98,13 @@ class SouscriptionController extends Controller
                 $input['nom'] = $input['nom'] ?? $user->name;
             }
 
-            // 1. Initialiser la souscription
+            // 1. Recalcule du prix côté serveur depuis le pack et la périodicité (source de vérité).
+            // Le prix envoyé par le client est ignoré : seul le catalogue serveur fait foi.
+            $input['pack'] = (string) ($input['pack'] ?? '');
+            $input['periodicite'] = (string) ($input['periodicite'] ?? 'mensuel');
+            $input['prix'] = $this->prixServeur($input['pack'], $input['periodicite']);
+
+            // 2. Initialiser la souscription
             $sub = $this->subService->store($input);
 
             // 2. Initier le paiement Campay (ou mode démo si CAMPAY_ENABLED=0)
@@ -306,7 +343,10 @@ class SouscriptionController extends Controller
             // W-10 : paiement recu -> facture + activation de l'abonnement en attente
             if ($statut === 'recu') {
                 try {
-                    FactureService::createForPayment($clientId, (float) $sub->prix, $transactionId);
+                    // Recalcule du prix officiel côté serveur depuis le pack (source de vérité).
+                    // Le prix stocké en base a pu être manipulé côté client à la création.
+                    $prixOfficiel = $this->prixServeur((string) $sub->pack, null);
+                    FactureService::createForPayment($clientId, $prixOfficiel, $transactionId);
                 } catch (\Exception $fe) {
                     report($fe);
                 }

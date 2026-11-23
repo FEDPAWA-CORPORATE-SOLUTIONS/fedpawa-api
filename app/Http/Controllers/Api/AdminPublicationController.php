@@ -276,7 +276,13 @@ class AdminPublicationController extends Controller
     {
         $clientIds = DB::table('push_subscriptions')
             ->distinct()
-            ->pluck('client_id');
+            ->pluck('client_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if (empty($clientIds)) {
+            return;
+        }
 
         $titre = $pub->titre;
         $corps = $pub->chapeau
@@ -285,15 +291,14 @@ class AdminPublicationController extends Controller
                 ? substr(strip_tags($pub->contenu), 0, 137).'…'
                 : strip_tags($pub->contenu));
 
-        foreach ($clientIds as $clientId) {
-            $this->push->notifyEvent(
-                (int) $clientId,
-                'nouvelle_publication',
-                $titre,
-                $corps,
-                '/publications/'.$pub->id
-            );
+        // Dispatch un job de Queue par lot de 100 clients pour éviter le blocage HTTP
+        // et le risque de timeout du worker sous charge.
+        $lots = array_chunk($clientIds, 100);
+        foreach ($lots as $lot) {
+            NotifyNewPublicationJob::dispatch($pub->id, $lot, $titre, $corps);
         }
+
+        Log::info('AdminPublicationController: '.count($clientIds).' notifications push pushées en '.count($lots).' job(s) pour la publication '.$pub->id);
     }
 
     // ------------------------------------------------------------------
