@@ -37,6 +37,21 @@ class SouscriptionController extends Controller
         'international-essential' => 50000,
         'international-business' => 110000,
         'international-premium' => 175000,
+        // Packs OAPI (Protection de la propriété intellectuelle)
+        'oapi-marque' => 200000,
+        'oapi-logo' => 200000,
+        'oapi-logiciel' => 200000,
+        'oapi-dessin' => 200000,
+        'oapi-brevet' => 200000,
+        'oapi-standard' => 200000,
+        // Packs Contrats (Rédaction de contrats)
+        'contrats-standard' => 50000,
+        'contrats-premium' => 100000,
+        // Packs Conseil fiscal
+        'fiscalite-starter' => 35000,
+        'fiscalite-pro' => 65000,
+        'fiscalite-premium' => 120000,
+        'fiscalite-corporate' => 200000,
     ];
 
     /** Multiplicateurs de périodicité (en mois). */
@@ -85,22 +100,32 @@ class SouscriptionController extends Controller
     {
         $user = $request->user();
         $input = $request->all();
+        error_log('DEBUG_ALL_INPUT: ' . print_r($input, true));
+        error_log('DEBUG_INPUT: ' . json_encode($input));
+        \Log::info('Souscription process input: ' . json_encode($input));
 
         try {
             // Lane #4 : le client connecté prime — on rattache la souscription à son compte
             $sessionClient = DB::table('clients')->where('email', $user->email)->first();
             if ($sessionClient) {
                 $input['email'] = $sessionClient->email;
-                $input['nom'] = $input['nom'] ?? $sessionClient->nom;
+                $input['nom'] = $input['nom'] ?? $input['nomComplet'] ?? $sessionClient->nom;
             } else {
                 // Premier achat : le compte API est le client (parité session client_id)
                 $input['email'] = $user->email;
-                $input['nom'] = $input['nom'] ?? $user->name;
+                $input['nom'] = $input['nom'] ?? $input['nomComplet'] ?? $user->name;
             }
 
             // 1. Recalcule du prix côté serveur depuis le pack et la périodicité (source de vérité).
             // Le prix envoyé par le client est ignoré : seul le catalogue serveur fait foi.
-            $input['pack'] = (string) ($input['pack'] ?? '');
+            $typeActifToPack = [
+                'Marque' => 'oapi-marque',
+                'Logo' => 'oapi-logo',
+                'Logiciel' => 'oapi-logiciel',
+                'Dessin et Modèle' => 'oapi-dessin',
+                'Brevet' => 'oapi-brevet',
+            ];
+            $input['pack'] = (string) ($input['pack'] ?? ($typeActifToPack[$input['typeActif'] ?? ''] ?? 'oapi-standard'));
             $input['periodicite'] = (string) ($input['periodicite'] ?? 'mensuel');
             $input['prix'] = $this->prixServeur($input['pack'], $input['periodicite']);
 
@@ -146,8 +171,10 @@ class SouscriptionController extends Controller
                 'montant' => (float) $input['prix'],
                 'mode_paiement' => 'campay',
                 'transaction_id' => (string) ($transactionId ?? ''),
+                'numero_dossier' => $sub['numero_dossier'] ?? null,
                 'date' => now()->format('Y-m-d H:i:s'),
                 'statut' => 'en_attente',
+                'simule' => ($transactionId !== null && str_starts_with((string) $transactionId, 'SIM-')) ? 1 : 0,
             ]);
 
             // 4. Générer l'OTP pour la signature.
@@ -175,7 +202,11 @@ class SouscriptionController extends Controller
                 'transaction_id' => $transactionId,
                 'subscription_id' => $sub['subscription_id'],
                 'client_id' => $sub['client_id'],
+                'numero_dossier' => $sub['numero_dossier'] ?? null,
             ];
+            if (self::demoMode()) {
+                $payload['otp_demo'] = $otp;
+            }
             return response()->json($payload);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
@@ -188,6 +219,8 @@ class SouscriptionController extends Controller
         $user = $request->user();
         try {
             $input = $request->all();
+        error_log('DEBUG_ALL_INPUT: ' . print_r($input, true));
+        error_log('DEBUG_INPUT: ' . json_encode($input));
             $clientId = (int) $input['client_id'];
 
             // Vérifier que l'abonnement appartient bien à ce client
@@ -277,14 +310,63 @@ class SouscriptionController extends Controller
                 ]);
             }
 
-            // Autres services : finalisation SANS contrat (dossier en traitement)
+            // Autres services : finalisation avec contrat généré pour tous les services
             DB::table('abonnements')->where('id', $sub->id)->update(['statut' => 'actif']);
             $this->notifier->sendWelcomeEmail($sub->email, $sub->nom);
+
+            // Générer un contrat PDF pour tous les services (pas seulement domiciliation)
+            $pdf = $this->pdfService->generateContract([
+                'client_name' => $sub->nom,
+                'company_name' => $sub->entreprise ?? ($sub->denomination ?? 'Entreprise'),
+                'price' => $sub->prix,
+                'details' => $sub->details ?? null,
+                'service' => $sub->pack,
+                'numero_dossier' => $sub->numero_dossier,
+            ]);
+            Storage::disk('local')->put('documents/contrat_'.$sub->id.'.pdf', $pdf);
+
+            $contratId = (int) DB::table('contrats')->insertGetId([
+                'client_id' => $clientId,
+                'type' => 'contrat_'.$sub->pack,
+                'fichier' => 'documents/contrat_'.$sub->id.'.pdf',
+                'date_signature' => now()->format('Y-m-d H:i:s'),
+            ]);
+
+            $this->notifier->sendWelcomeEmail($sub->email, $sub->nom);
+
+            // Notification catalogue : contrat_signé
+            $this->push->notifyEvent(
+                $clientId,
+                'contrat_signe',
+                'Votre contrat est prêt',
+                'Votre contrat a été signé et est disponible dans votre espace client.',
+                '/espace-client?tab=contrats'
+            );
+
+            // E-mail événementiel : contrat signé
+            $client = Client::find($clientId);
+            if ($client) {
+                $this->notifier->sendEventEmail(
+                    $client,
+                    'contrat_signe',
+                    'Votre contrat est signé — dossier #'.$contratId.' — FEDPAWA',
+                    'emails.06-contrat-signe',
+                    [
+                        'client_nom' => $sub->nom,
+                        'dossier_id' => $contratId,
+                        'date_signature' => now()->format('d/m/Y H:i'),
+                        'lien_contrat' => config('app.url', 'https://www.fedpawa.com').'/espace-client?tab=contrats',
+                    ]
+                );
+            }
+
             OtpService::clear($clientId);
-            AuditLogger::log('SUBSCRIPTION_FINALIZED', $clientId, 'client', 'Sub ID: '.$sub->id.' (sans contrat — service non domiciliation)');
+            AuditLogger::log('SUBSCRIPTION_FINALIZED', $clientId, 'client', 'Sub ID: '.$sub->id.' (contrat généré)');
 
             return response()->json([
-                'message' => 'Paiement confirmé — votre dossier est en traitement. Un juriste FEDPAWA vous recontacte sous 24 heures ouvrées.',
+                'message' => 'Contrat signé et généré avec succès.',
+                'contrat_url' => '/api/v1/document?type=contrat&id='.$contratId,
+                'numero_dossier' => $sub->numero_dossier,
             ]);
         } catch (\Exception $e) {
             report($e);
@@ -326,11 +408,22 @@ class SouscriptionController extends Controller
             }
 
             if ($campayEnabled && $transactionId !== '') {
-                // Production : statut réel côté Campay
-                $status = $this->campay->checkStatus($transactionId);
-                $statut = (($status['status'] ?? '') === 'SUCCESSFUL') ? 'recu' : 'en_attente';
-                if ($pay) {
-                    DB::table('paiements')->where('id', $pay->id)->update(['statut' => $statut]);
+                // Numéro simulé : validation automatique sans appel Campay
+                if (str_starts_with($transactionId, 'SIM-')) {
+                    $statut = 'recu';
+                    if ($pay) {
+                        DB::table('paiements')->where('id', $pay->id)->update([
+                            'statut' => $statut,
+                            'date_validation' => now()->format('Y-m-d H:i:s'),
+                        ]);
+                    }
+                } else {
+                    // Production : statut réel côté Campay
+                    $status = $this->campay->checkStatus($transactionId);
+                    $statut = (($status['status'] ?? '') === 'SUCCESSFUL') ? 'recu' : 'en_attente';
+                    if ($pay) {
+                        DB::table('paiements')->where('id', $pay->id)->update(['statut' => $statut]);
+                    }
                 }
             } elseif (! $campayEnabled) {
                 // Mode demo : paiement considéré reçu dès la vérification (parité)

@@ -139,7 +139,7 @@ class PdfService
         return (string) file_get_contents(resource_path('views/pdf/contract-template.html'));
     }
 
-    private function dompdf(): Dompdf
+    public function dompdf(): Dompdf
     {
         $options = new Options;
         $options->setDefaultFont('Helvetica');

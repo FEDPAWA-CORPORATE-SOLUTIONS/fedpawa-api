@@ -2,11 +2,11 @@
 @extends('emails.layout')
 
 @section('titre_page')
-Votre abonnement « {{ $pack }} » est actif — FEDPAWA
+Votre abonnement « {{ $pack ?? 'non spécifié' }} » est actif — FEDPAWA
 @endsection
 
 @section('preheader')
-Abonnement {{ $pack }} activé le {{ $date_debut }} pour {{ $prix }} {{ $devise }} / {{ $periode }}.
+Abonnement {{ $pack ?? 'non spécifié' }} activé le {{ $date_debut ?? 'non défini' }} pour {{ $prix ?? 0 }} {{ $devise ?? 'FCFA' }} / {{ $periode ?? 'mensuel' }}.
 @endsection
 
 @section('content')

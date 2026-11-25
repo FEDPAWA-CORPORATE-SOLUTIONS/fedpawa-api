@@ -180,7 +180,7 @@ class NotificationService
         return $this->send(
             $email,
             'Votre code de signature FEDPAWA',
-            'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Il expire dans 10 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+            'Votre code de signature de contrat est : <strong>'.htmlspecialchars($code)."</strong><br>Il expire dans 24 heures. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
         );
     }
 

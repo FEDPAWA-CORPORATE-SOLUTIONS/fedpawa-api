@@ -16,7 +16,7 @@ class SouscriptionStoreRequest extends FormRequest
         return [
             // Champs communs de base
             'email' => ['required', 'email'],
-            'pack' => ['required', 'string', 'max:255'],
+            'pack' => ['sometimes', 'string', 'max:255'],
             'nom' => ['required', 'string', 'max:255'],
             'prix' => ['required', 'numeric', 'gte:0', 'lte:1000000'],
             'entreprise' => ['nullable', 'string', 'max:255'],

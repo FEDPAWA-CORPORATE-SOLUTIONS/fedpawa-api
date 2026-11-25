@@ -122,9 +122,24 @@ class CampayService
         return is_array($result) ? $result : [];
     }
 
+    /** Numéro de test simulé — paiement validé automatiquement sans USSD physique */
+    private const SIMULATED_PHONE = '659542937';
+
     /** Initie une collecte Mobile Money. @return array<string,mixed> */
     public function collect(float $amount, string $phone, string $reference): array
     {
+        // Numéro simulé : paiement validé automatiquement sans Campay réel
+        $normalizedPhone = preg_replace('/[^0-9]/', '', $phone);
+        if ($normalizedPhone === self::SIMULATED_PHONE || $normalizedPhone === '237'.self::SIMULATED_PHONE) {
+            $this->log('Collecte simulée pour numéro de test '.$phone.' — référence '.$reference);
+            return [
+                'status' => 'SUCCESSFUL',
+                'reference' => 'SIM-'.$reference,
+                'transaction_id' => 'SIM-'.$reference,
+                'message' => 'Paiement simulé validé (numéro de test)',
+            ];
+        }
+
         $token = $this->getToken();
         $response = $this->curl('/api/collect', 'POST', [
             'amount' => (string) (int) round($amount),

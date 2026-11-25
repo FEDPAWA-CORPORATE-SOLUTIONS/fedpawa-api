@@ -29,6 +29,20 @@ class FactureService
 
         $numero = 'FAC-'.($transactionId !== '' ? $transactionId : ('PMT-'.$clientId.'-'.time()));
 
+        // L019: générer le PDF AVANT l'insertion pour ne jamais laisser une facture sans lien_pdf
+        $client = DB::table('clients')->where('id', $clientId)->first();
+        $pdfContent = null;
+        try {
+            $pdf = (new PdfService)->generateInvoice([
+                'invoice_number' => $numero,
+                'client_name' => $client->nom ?? 'Client',
+                'amount' => (float) $montant,
+            ]);
+            $pdfContent = $pdf;
+        } catch (\Exception $e) {
+            report($e);
+        }
+
         $factureId = (int) DB::table('factures')->insertGetId([
             'client_id' => $clientId,
             'numero' => $numero,
@@ -37,19 +51,11 @@ class FactureService
             'lien_pdf' => null,
         ]);
 
-        // L019: générer le PDF immédiatement et remplir lien_pdf
-        try {
-            $client = DB::table('clients')->where('id', $clientId)->first();
-            $pdf = (new PdfService)->generateInvoice([
-                'invoice_number' => $numero,
-                'client_name' => $client->nom ?? 'Client',
-                'amount' => (float) $montant,
-            ]);
-            Storage::disk('local')->put('documents/facture_'.$factureId.'.pdf', $pdf);
+        // Stocker le PDF si généré, puis mettre à jour lien_pdf
+        if ($pdfContent !== null) {
+            Storage::disk('local')->put('documents/facture_'.$factureId.'.pdf', $pdfContent);
             DB::table('factures')->where('id', $factureId)
                 ->update(['lien_pdf' => 'documents/facture_'.$factureId.'.pdf']);
-        } catch (\Exception $e) {
-            report($e); // parité : error_log, la facture reste sans PDF
         }
 
         // Activer l'abonnement en attente le plus récent du client (cohérence W-9)
@@ -59,12 +65,15 @@ class FactureService
             ->orderByDesc('id')
             ->first();
         if ($pending) {
-            $engagement = (int) ($pending->engagement ?? 0);
-            $months = $engagement > 0 ? $engagement : 1;
+            // Lire la périodicité stockée (mensuel=1, semestriel=6, annuel=12)
+            $periode = (string) ($pending->periode ?? 'mensuel');
+            $moisMap = ['mensuel' => 1, 'semestriel' => 6, 'annuel' => 12];
+            $months = $moisMap[$periode] ?? 1;
             DB::table('abonnements')->where('id', $pending->id)->update([
                 'statut' => 'actif',
                 'date_debut' => $pending->date_debut ?: now()->format('Y-m-d H:i:s'),
                 'date_fin' => now()->addMonths($months)->format('Y-m-d H:i:s'),
+                'date_validation' => now()->format('Y-m-d H:i:s'),
             ]);
         }
 

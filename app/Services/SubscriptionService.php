@@ -71,16 +71,26 @@ class SubscriptionService
                 ? json_encode($detailsData, JSON_UNESCAPED_UNICODE)
                 : null;
 
+            // Numéro de dossier unique
+            $numeroDossier = 'DOS-'.date('Ymd').'-'.strtoupper(bin2hex(random_bytes(3)));
+
             $subscriptionId = (int) DB::table('abonnements')->insertGetId([
                 'client_id' => $clientId,
                 'pack' => htmlspecialchars((string) $data['pack']),
                 'prix' => (float) $data['prix'],
+                'periode' => htmlspecialchars((string) ($data['periodicite'] ?? 'mensuel')),
+                'numero_dossier' => $numeroDossier,
                 'date_debut' => now()->format('Y-m-d H:i:s'),
                 'statut' => 'en_attente',
                 'details' => $detailsJson,
             ]);
 
-            return ['status' => 'success', 'client_id' => $clientId, 'subscription_id' => $subscriptionId];
+            return [
+                'status' => 'success',
+                'client_id' => $clientId,
+                'subscription_id' => $subscriptionId,
+                'numero_dossier' => $numeroDossier,
+            ];
         });
     }
 

@@ -6,7 +6,7 @@ Nouveau dossier KYC soumis — FEDPAWA
 @endsection
 
 @section('preheader')
-Un client vient de déposer ses documents KYC (dossier #{{ $kyc_id }}). À examiner dans l'espace administrateur.
+Un client vient de déposer ses documents KYC (dossier #{{ $kyc_id ?? 'non défini' }}). À examiner dans l'espace administrateur.
 @endsection
 
 @section('content')
@@ -27,19 +27,19 @@ Un client vient de déposer ses documents KYC (dossier #{{ $kyc_id }}). À exami
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         <tr>
           <td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">Dossier KYC</td>
-          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">#{{ $kyc_id }}</td>
+          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">#{{ $kyc_id ?? 'non défini' }}</td>
         </tr>
       </table>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         <tr>
           <td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">Client</td>
-          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $client_nom }}</td>
+          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $client_nom ?? 'non spécifié' }}</td>
         </tr>
       </table>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
         <tr>
           <td class="em-box-label" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;color:#5A6478;">E-mail client</td>
-          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $client_email }}</td>
+          <td align="right" class="em-box-val" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#1E293B;text-align:right;">{{ $client_email ?? 'non renseignée' }}</td>
         </tr>
       </table>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:10px;">
@@ -60,8 +60,8 @@ Un client vient de déposer ses documents KYC (dossier #{{ $kyc_id }}). À exami
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px 0 24px;">
   <tr>
     <td align="center" bgcolor="#0A1424" class="em-cta-td" style="background-color:#0A1424;">
-      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $lien_action }}" style="height:50px;v-text-anchor:middle;width:280px;" arcsize="0%" fillcolor="#0A1424" stroke="f"><v:textbox inset="0,0,0,0"><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Examiner le dossier KYC</center></v:textbox></v:roundrect><![endif]-->
-      <!--[if !mso]><!--><a href="{{ $lien_action }}" class="em-btn" style="display:inline-block;background-color:#0A1424;color:#FFFFFF;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 32px;">Examiner le dossier KYC</a><!--<![endif]-->
+      <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $lien_action ?? '#' }}" style="height:50px;v-text-anchor:middle;width:280px;" arcsize="0%" fillcolor="#0A1424" stroke="f"><v:textbox inset="0,0,0,0"><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Examiner le dossier KYC</center></v:textbox></v:roundrect><![endif]-->
+      <!--[if !mso]><!--><a href="{{ $lien_action ?? '#' }}" class="em-btn" style="display:inline-block;background-color:#0A1424;color:#FFFFFF;font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:16px 32px;">Examiner le dossier KYC</a><!--<![endif]-->
     </td>
   </tr>
 </table>

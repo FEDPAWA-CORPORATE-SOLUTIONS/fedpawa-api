@@ -34,6 +34,11 @@ class DashboardController extends Controller
         $client = DB::table('clients')->where('id', $clientId)
             ->first(['id', 'civilité', 'nom', 'entreprise', 'forme_juridique', 'email', 'telephone', 'adresse']);
 
+        // Formatage du téléphone avec indicatif pays si absent
+        if ($client && !empty($client->telephone) && !str_starts_with((string) $client->telephone, '+')) {
+            $client->telephone = '+237 ' . preg_replace('/[^0-9]/', '', (string) $client->telephone);
+        }
+
         // W-9 : abonnement ACTIF le plus récent, sinon le plus récent
         $subscription = DB::table('abonnements')
             ->where('client_id', $clientId)->where('statut', 'actif')

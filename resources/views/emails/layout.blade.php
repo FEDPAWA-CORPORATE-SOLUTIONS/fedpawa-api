@@ -83,8 +83,8 @@
       <div class="em-foot-txt" style="font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.7;color:#94A3B8;margin-top:10px;">
         <a href="mailto:contact@fedpawa.com" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">contact@fedpawa.com</a>
         &nbsp;·&nbsp; +237 691 70 48 02 &nbsp;·&nbsp; Douala · Logpom · Cameroun<br>
-        <span class="em-foot-txt" style="color:#64748B;">Vous recevez cet e-mail transactionnel à l'adresse <strong>{{ $client_email }}</strong> parce que vous avez un compte FEDPAWA CORPORATE SOLUTIONS. Les e-mails transactionnels (vérification, sécurité, documents, paiements) ne comportent pas de lien de désabonnement.</span><br>
-        <span class="em-foot-txt" style="color:#64748B;">© {{ $annee }} FEDPAWA CORPORATE SOLUTIONS — </span>
+        <span class="em-foot-txt" style="color:#64748B;">Vous recevez cet e-mail transactionnel à l'adresse <strong>{{ $client_email ?? 'non renseignée' }}</strong> parce que vous avez un compte FEDPAWA CORPORATE SOLUTIONS. Les e-mails transactionnels (vérification, sécurité, documents, paiements) ne comportent pas de lien de désabonnement.</span><br>
+        <span class="em-foot-txt" style="color:#64748B;">© {{ $annee ?? date('Y') }} FEDPAWA CORPORATE SOLUTIONS — </span>
         <a href="https://www.fedpawa.com/cgu" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">CGU</a>
         <span class="em-foot-txt" style="color:#64748B;"> · </span>
         <a href="https://www.fedpawa.com/politique-confidentialite" class="em-foot-link" style="color:#D8D4CE;text-decoration:none;">Politique de confidentialité</a>

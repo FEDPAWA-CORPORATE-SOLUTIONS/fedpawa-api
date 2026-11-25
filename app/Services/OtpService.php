@@ -47,14 +47,14 @@ class OtpService
     public static function generate(int $clientId, string $scope = 'client', int $ttlSecondes = self::TTL_SECONDES): string
     {
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        Cache::put(self::key($clientId, $scope), Hash::make($otp), $ttlSecondes);
+        \Illuminate\Support\Facades\Cache::store('file')->put(self::key($clientId, $scope), Hash::make($otp), $ttlSecondes);
 
         return $otp;
     }
 
     public static function verify(int $clientId, string $otp, string $scope = 'client'): bool
     {
-        $hash = Cache::get(self::key($clientId, $scope));
+        $hash = \Illuminate\Support\Facades\Cache::store('file')->get(self::key($clientId, $scope));
         if (! is_string($hash) || $hash === '') {
             // absent ou expiré (TTL écoulé) => faux
             return false;
@@ -65,6 +65,6 @@ class OtpService
 
     public static function clear(int $clientId, string $scope = 'client'): void
     {
-        Cache::forget(self::key($clientId, $scope));
+        \Illuminate\Support\Facades\Cache::store('file')->forget(self::key($clientId, $scope));
     }
 }
