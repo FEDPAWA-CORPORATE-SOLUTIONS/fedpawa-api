@@ -5,8 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convention de Domiciliation</title>
     <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+            @top-center {
+                content: "FEDPAWA CORPORATE SOLUTIONS SARL — Convention de Domiciliation";
+                font-family: "Times New Roman", serif;
+                font-size: 9pt;
+                color: #666666;
+                border-bottom: 0.5pt solid #666666;
+                padding-bottom: 4pt;
+                margin-bottom: 8pt;
+            }
+            @bottom-center {
+                content: "FEDPAWA Corporate Solutions · Immeuble Pharmacie de Logpom, Douala · Cameroun · contact@fedpawacorporatesolutions.com — Page " counter(page) " sur " counter(pages);
+                font-family: "Times New Roman", serif;
+                font-size: 8pt;
+                color: #666666;
+                border-top: 0.5pt solid #666666;
+                padding-top: 4pt;
+                margin-top: 8pt;
+            }
+        }
         body {
-            font-family: Helvetica, Arial, sans-serif;
+            font-family: "Times New Roman", serif;
             color: #333;
             line-height: 1.6;
             margin: 40px;
