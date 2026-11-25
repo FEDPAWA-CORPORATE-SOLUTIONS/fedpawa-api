@@ -152,8 +152,11 @@ class AuthController extends Controller
                 LoginThrottleService::recordSuccess($email, 'admin');
                 AuditService::log('ADMIN_LOGIN_via_client_form', (int) $admin->id, 'admin', 'Login OK from client form');
 
+                $token = $admin->createToken('auth-token')->plainTextToken;
+
                 return response()->json([
                     'message' => 'Connexion réussie',
+                    'token' => $token,
                     'redirect' => 'admin_dashboard.html',
                     'role' => 'admin',
                 ]);
