@@ -278,7 +278,26 @@ class AuthController extends Controller
         // on interroge explicitement le guard sanctum, sinon le guard par
         // défaut 'web' (session) ne voit jamais le Bearer token.
         $user = $request->user('sanctum');
+
+        // Cas admin : le guard sanctum utilise le provider 'users' (modèle User).
+        // Un admin dont le token a été créé sur App\Models\Admin n'est pas résolu
+        // par Sanctum. On résout manuellement via la table personal_access_tokens.
         if (! $user) {
+            $plainToken = $request->bearerToken();
+            if ($plainToken) {
+                $tokenRecord = \Laravel\Sanctum\PersonalAccessToken::findToken($plainToken);
+                if ($tokenRecord && $tokenRecord->tokenable instanceof \App\Models\Admin) {
+                    $admin = $tokenRecord->tokenable;
+                    return response()->json([
+                        'authenticated' => true,
+                        'role' => 'admin',
+                        'name' => $admin->email,
+                        'email' => $admin->email,
+                        'kyc_status' => null,
+                        'email_verified' => true,
+                    ], 200);
+                }
+            }
             return response()->json(['authenticated' => false], 200);
         }
 
