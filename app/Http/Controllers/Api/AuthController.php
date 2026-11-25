@@ -315,6 +315,7 @@ class AuthController extends Controller
         }
 
         $client = Client::where('email', $user->email)->first();
+        $isAdmin = $client ? false : DB::table('admins')->where('email', $user->email)->exists();
 
         // Parité public/index.php (route /api/me) : le client connecté reçoit
         // aussi 'email' et 'kyc_status' = statut du DERNIER dossier KYC
@@ -335,9 +336,9 @@ class AuthController extends Controller
 
         return response()->json([
             'authenticated' => true,
-            'role' => (string) ($client->role ?? 'client'),
-            'name' => (string) ($client->nom ?? $user->name),
-            'email' => (string) ($client->email ?? $user->email),
+            'role' => $isAdmin ? 'admin' : (string) ($client->role ?? 'client'),
+            'name' => $isAdmin ? $user->name : (string) ($client->nom ?? $user->name),
+            'email' => $isAdmin ? $user->email : (string) ($client->email ?? $user->email),
             'kyc_status' => $kycStatus,
             'email_verified' => $client ? $client->estVerifie() : false,
         ], 200);

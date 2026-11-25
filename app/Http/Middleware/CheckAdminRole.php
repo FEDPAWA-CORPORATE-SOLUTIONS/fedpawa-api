@@ -20,7 +20,8 @@ class CheckAdminRole
         if (! $user) {
             return response()->json(['error' => 'Connexion requise', 'login_required' => true], 401);
         }
-        $isAdmin = DB::table('clients')->where('email', $user->email)->where('role', 'admin')->exists();
+        $isAdmin = DB::table('clients')->where('email', $user->email)->where('role', 'admin')->exists()
+            || DB::table('admins')->where('email', $user->email)->exists();
         if (! $isAdmin) {
             return response()->json(['error' => 'Accès administrateur requis', 'forbidden' => true], 403);
         }
