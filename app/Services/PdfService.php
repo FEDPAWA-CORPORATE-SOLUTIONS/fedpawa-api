@@ -23,9 +23,9 @@ class PdfService
     {
         $dompdf = $this->dompdf();
 
-        $clientName = $data['client_name'] ?? 'Client';
-        $companyName = $data['company_name'] ?? 'Entreprise';
-        $price = (int) ($data['price'] ?? 50000);
+        $clientName = $data['client_name'] ?? $data['nomComplet'] ?? 'Client';
+        $companyName = $data['company_name'] ?? $data['denomination'] ?? 'Entreprise';
+        $price = (int) ($data['price'] ?? $data['prix'] ?? 50000);
 
         // Parité ChainLoader source : la BDD (éditable admin) prime ; sinon la
         // vue Blade convertie depuis contract.html.twig (HTML structurel identique).
@@ -55,7 +55,7 @@ class PdfService
             ])->render();
         }
 
-        // L022: substituer les placeholders [DOMICILIE_*] par les données réelles
+        // Substituer les placeholders [DOMICILIE_*] par les données réelles
         $html = self::fillDomicilie($html, $data);
 
         $dompdf->loadHtml($html);
@@ -103,17 +103,21 @@ class PdfService
             return $v !== '' ? $v : $fallback;
         };
 
-        $rep = $get('representant', $data['client_name'] ?? '…………');
-        $entreprise = $get('entreprise', $data['company_name'] ?? '…………');
+        $rep = $get('representant', $data['client_name'] ?? $data['nomComplet'] ?? '…………');
+        $entreprise = $get('entreprise', $data['company_name'] ?? $data['denomination'] ?? '…………');
         $today = now()->format('d/m/Y à H:i');
 
         $map = [
-            '[DOMICILIE_RCCM]' => $get('rccm', "en cours d'immatriculation"),
-            '[DOMICILIE_NIU]' => $get('niu', "en cours d'attribution"),
-            '[DOMICILIE_SIEGE]' => $get('siege', '………'),
+            '[DOMICILIE_RCCM]' => $get('rccm', $data['rccm'] ?? "en cours d'immatriculation"),
+            '[DOMICILIE_NIU]' => $get('niu', $data['niu'] ?? "en cours d'attribution"),
+            '[DOMICILIE_SIEGE]' => $get('siege', $data['adresse'] ?? '………'),
             '[DOMICILIE_REPRESENTANT]' => $rep,
-            '[DOMICILIE_QUALITE]' => $get('qualite', 'Représentant légal'),
+            '[DOMICILIE_QUALITE]' => $get('qualite', $data['fonction'] ?? 'Représentant légal'),
             '[DOMICILIE_ENTREPRISE]' => $entreprise,
+            '[DOMICILIE_FORME_JURIDIQUE]' => $get('formeJuridique', $data['formeJuridique'] ?? 'SARL'),
+            '[DOMICILIE_DUREE]' => $get('periodicite', $data['periodicite'] ?? '1 mois (Engagement mensuel)'),
+            '[DOMICILIE_PACK]' => $get('pack', $data['pack'] ?? 'PACK ESSENTIAL'),
+            '[DOMICILIE_CODE_OTP]' => $get('otp', $data['otp'] ?? '…………'),
             '[DOMICILIE_IP]' => request()?->ip() ?? '—',
             '[DOMICILIE_DATE]' => $today,
         ];
