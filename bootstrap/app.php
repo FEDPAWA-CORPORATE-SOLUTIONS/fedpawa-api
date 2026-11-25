@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'email_verified' => \App\Http\Middleware\EnsureEmailVerified::class,
         ]);
 
+        // Résout le token Sanctum admin (créé sur App\Models\Admin) avant que
+        // le guard auth:sanctum (provider 'users') ne tente et échoue avec 401.
+        $middleware->prepend(\App\Http\Middleware\ResolveAdminToken::class);
+
         // Honeypot contact : le middleware global TrimStrings vidait
         // site='   ' → '' AVANT le contrôleur (empty('') = false côté
         // contrôleur devient inutilisable ; ligne insérée en base au lieu
