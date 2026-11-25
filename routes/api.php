@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\SouscriptionNouveauFluxController;
+use App\Http\Controllers\Api\SubscriptionFileController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\ContractSigningController;
 use App\Http\Controllers\Api\SupportController;
@@ -204,9 +205,12 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware(CheckAdminRole::class)->prefix('admin')->group(function (): void {
             Route::get('/mails', [AdminMailController::class, 'index']);
             Route::get('/mails/count', [AdminMailController::class, 'count']);
+            Route::post('/mails', [AdminMailController::class, 'store']);
             Route::post('/mails/tout-lu', [AdminMailController::class, 'toutLu']);
             Route::get('/mails/{id}', [AdminMailController::class, 'show'])->whereNumber('id');
             Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
+            Route::post('/mails/{id}/replier', [AdminMailController::class, 'reply'])->whereNumber('id');
+            Route::get('/mails/envoyes', [AdminMailController::class, 'envoyes']);
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
