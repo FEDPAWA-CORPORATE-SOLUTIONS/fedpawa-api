@@ -251,6 +251,8 @@ class SouscriptionNouveauFluxController extends Controller
     {
         $input = $request->validate([
             'otp' => 'required|string|size:6',
+            'signature_image' => 'nullable|string',
+            'signature_metadata' => 'nullable|array',
         ]);
 
         $draft = ContractDraft::find($draftId);
@@ -271,6 +273,7 @@ class SouscriptionNouveauFluxController extends Controller
             'company_name' => $draft->contrat_data['entreprise'] ?? 'Entreprise',
             'price' => $draft->prix,
             'details' => $draft->contrat_data,
+            'signature_image' => $input['signature_image'] ?? null,
         ]));
 
         if (!$this->opensign->isConfigured()) {

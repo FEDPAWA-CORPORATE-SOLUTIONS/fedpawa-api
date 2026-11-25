@@ -14,8 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use ZipArchive;
 
 /**
  * Parité de src/Controller/KycController.php :
@@ -455,5 +457,47 @@ class KycController extends Controller
         } catch (\Throwable $e) {
             \Log::warning('E-mail décision KYC non envoyé à '.$email.': '.$e->getMessage());
         }
+}
+
+    /** GET /api/v1/kyc/download-zip — téléchargement groupé des documents KYC du client connecté */
+    public function downloadZip(Request $request)
+    {
+        $user = $request->user();
+        $client = DB::table('clients')->where('email', $user->email)->first();
+        if (! $client) {
+            abort(403, 'Non autorisé');
+        }
+
+        $kyc = DB::table('kyc')->where('client_id', (int) $client->id)->orderByDesc('id')->first();
+        if (! $kyc) {
+            abort(404, 'Aucun dossier KYC trouvé pour ce client');
+        }
+
+        $documents = [
+            'piece_identite' => $kyc->piece_identite ?? null,
+            'justificatif_domicile' => $kyc->justificatif_domicile ?? null,
+        ];
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'kyc_zip_') . '.zip';
+        $zip = new ZipArchive();
+        if ($zip->open($tempFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Impossible de creer l archive ZIP');
+        }
+
+        foreach ($documents as $label => $chemin) {
+            if (! $chemin) continue;
+            $diskPath = Storage::disk('local')->path('uploads/' . $chemin);
+            if (file_exists($diskPath)) {
+                $zip->addFile($diskPath, $label . '.' . pathinfo($chemin, PATHINFO_EXTENSION));
+            }
+        }
+
+        $zip->close();
+
+        return response()->download($tempFile, 'kyc_documents_' . $client->id . '.zip', [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="kyc_documents_' . $client->id . '.zip"',
+        ])->deleteFileAfterSend(true);
     }
+
 }

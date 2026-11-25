@@ -28,7 +28,7 @@ class PdfService
         $price = (int) ($data['price'] ?? $data['prix'] ?? 50000);
 
         // Parité ChainLoader source : la BDD (éditable admin) prime ; sinon la
-        // vue Blade convertie depuis contract.html.twig (HTML structurel identique).
+        // vue Blade convertie depuis contract.html.twig (HTML structurel IDENTIQUE).
         $dbContent = null;
         try {
             $tpl = DB::table('contract_templates')->where('name', 'contract')->first();
@@ -57,6 +57,17 @@ class PdfService
 
         // Substituer les placeholders [DOMICILIE_*] par les données réelles
         $html = self::fillDomicilie($html, $data);
+
+        // Injecter la signature visuelle capturée côté client, à l'emplacement
+        // du <span class="signature-line"></span> dans le template de contrat.
+        $signatureImage = $data['signature_image'] ?? null;
+        if ($signatureImage && str_contains($html, '<span class="signature-line"></span>')) {
+            $imgTag = sprintf(
+                '<img src="%s" class="signature-img" alt="Signature électronique" />',
+                $signatureImage
+            );
+            $html = str_replace('<span class="signature-line"></span>', $imgTag, $html);
+        }
 
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
