@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ContractSigningController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\AdminMailController;
+use App\Http\Controllers\Api\UserCategoryController;
 use App\Http\Controllers\Api\AdminPublicationController;
 use App\Http\Controllers\Api\PublicationController;
 use App\Http\Controllers\Api\PublicationLectureController;
@@ -211,6 +212,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
             Route::post('/mails/{id}/replier', [AdminMailController::class, 'reply'])->whereNumber('id');
             Route::get('/mails/envoyes', [AdminMailController::class, 'envoyes']);
+            Route::get('/mail-categories', [UserCategoryController::class, 'index']);
+            Route::post('/mail-categories', [UserCategoryController::class, 'store']);
+            Route::delete('/mail-categories/{id}', [UserCategoryController::class, 'destroy'])->whereNumber('id');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
