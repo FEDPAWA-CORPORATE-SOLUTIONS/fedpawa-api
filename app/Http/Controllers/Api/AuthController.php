@@ -152,7 +152,19 @@ class AuthController extends Controller
                 LoginThrottleService::recordSuccess($email, 'admin');
                 AuditService::log('ADMIN_LOGIN_via_client_form', (int) $admin->id, 'admin', 'Login OK from client form');
 
-                $token = $admin->createToken('auth-token')->plainTextToken;
+                // Sanctum utilise le provider 'users' (modèle User). Créer/lier un User
+                // pour cet admin afin que le token Sanctum soit résoluble sur toutes
+                // les routes protégées par auth:sanctum.
+                $user = User::firstOrCreate(
+                    ['email' => $admin->email],
+                    [
+                        'name' => $admin->email,
+                        'password' => Hash::make('admin_' . Str::random(16)),
+                        'email_verified_at' => now(),
+                    ]
+                );
+
+                $token = $user->createToken('auth-token')->plainTextToken;
 
                 return response()->json([
                     'message' => 'Connexion réussie',
