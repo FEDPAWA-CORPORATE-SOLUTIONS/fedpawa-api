@@ -12,12 +12,14 @@ use App\Http\Controllers\Api\MailController;
 use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
+use App\Http\Controllers\Api\SouscriptionNouveauFluxController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\AdminMailController;
 use App\Http\Controllers\Api\AdminPublicationController;
 use App\Http\Controllers\Api\PublicationController;
 use App\Http\Controllers\Api\PublicationLectureController;
+use App\Http\Controllers\Api\PortantSignController;
 use App\Http\Controllers\Api\ResendWebhookController;
 use App\Http\Middleware\CheckAdminRole;
 use Illuminate\Http\Request;
@@ -83,6 +85,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/souscription', [SouscriptionController::class, 'process'])->middleware('email_verified');
         Route::post('/souscription/creation-entreprise', [SouscriptionController::class, 'process'])->middleware('email_verified');
         Route::post('/souscription/conseil-fiscal', [SouscriptionController::class, 'process'])->middleware('email_verified');
+        Route::post('/souscription/oapi', [SouscriptionController::class, 'process'])->middleware('email_verified');
+        Route::post('/souscription/contrats', [SouscriptionController::class, 'process'])->middleware('email_verified');
         Route::post('/signature', [SouscriptionController::class, 'finalize'])->middleware('email_verified');
         Route::post('/paiement/verifier', [SouscriptionController::class, 'verifyPayment'])->middleware('email_verified');
         Route::get('/contract/preview', [InvoiceController::class, 'previewContract']);
@@ -123,6 +127,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/courriers', [CourrierController::class, 'index']);
         // Upload multi-pages courier (client ou admin, garde interne contrôleur)
         Route::post('/courrier/upload', [CourierController::class, 'upload']);
+
+        // Upload fichier de souscription (pièces KYC, statuts, contrat, etc.)
+        Route::post('/souscription/upload', [SubscriptionFileController::class, 'upload']);
 
         // Support : création + listing (50 derniers)
         Route::post('/support', [SupportController::class, 'store']);
@@ -192,10 +199,44 @@ Route::prefix('v1')->group(function (): void {
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
+    // Fin section BE-EDGE
 
-    // ===== Fin section BE-EDGE =====
+    // ===== Section PORTANT-SIGN (signature électronique via Portant) =====
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/portant-sign/send', [PortantSignController::class, 'send']);
+        Route::get('/portant-sign/status/{id}', [PortantSignController::class, 'status']);
+        Route::get('/portant-sign/download/{id}', [PortantSignController::class, 'download']);
+        Route::get('/portant-sign/file/{id}', [PortantSignController::class, 'file']);
+    });
+
+    // ===== Section NOUVEAU FLUX SOUSCRIPTION (Signature avant Paiement) =====
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::prefix('souscription')->group(function (): void {
+            Route::post('/draft', [SouscriptionNouveauFluxController::class, 'createDraft']);
+            Route::post('/{draftId}/approve', [SouscriptionNouveauFluxController::class, 'approveDraft']);
+            Route::post('/{draftId}/email-link', [SouscriptionNouveauFluxController::class, 'collectEmail']);
+            Route::post('/{draftId}/sign', [SouscriptionNouveauFluxController::class, 'signDraft']);
+            Route::post('/{draftId}/request-otp', [SouscriptionNouveauFluxController::class, 'requestSignatureOtp']);
+            Route::post('/{draftId}/payment-link', [SouscriptionNouveauFluxController::class, 'sendPaymentLink']);
+            Route::post('/{draftId}/pay', [SouscriptionNouveauFluxController::class, 'processPayment']);
+            Route::get('/{draftId}/resume', [SouscriptionNouveauFluxController::class, 'resumePayment']);
+        });
+    });
+
+    // Consommation des jetons à usage unique (anti-prefetch) — SANS auth (lien public dans l'email)
+    Route::post('/souscription/payment-link/consume', [SouscriptionNouveauFluxController::class, 'consumePaymentLink']);
+    Route::post('/souscription/signature-link/consume', [SouscriptionNouveauFluxController::class, 'consumeSignatureLink']);
+
+    // Webhook Campay pour confirmation de paiement — PUBLIC (serveur-à-serveur, HMAC vérifié)
+    Route::post('/souscription/webhook-campay', [SouscriptionNouveauFluxController::class, 'confirmPayment']);
+
+    // ===== Fin section BE-EDGE ====
 });
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::get('/up', function () {
+    return response('OK', 200);
+});
