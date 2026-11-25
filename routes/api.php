@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\SouscriptionNouveauFluxController;
+use App\Http\Controllers\Api\SignatureController;
+use App\Http\Controllers\Api\ContractSigningController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\AdminMailController;
@@ -89,11 +91,20 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/souscription/contrats', [SouscriptionController::class, 'process'])->middleware('email_verified');
         Route::post('/signature', [SouscriptionController::class, 'finalize'])->middleware('email_verified');
         Route::post('/paiement/verifier', [SouscriptionController::class, 'verifyPayment'])->middleware('email_verified');
+        // Signature électronique — chaîne complète côté serveur (C1)
+        Route::post('/signature/dossier', [SignatureController::class, 'createDossier'])->middleware('email_verified');
+        Route::post('/signature/otp', [SignatureController::class, 'sendOtp'])->middleware('email_verified');
+        Route::post('/signature/signer', [SignatureController::class, 'signer'])->middleware('email_verified');
+        Route::get('/signature/dossier/{id}', [SignatureController::class, 'getDossierState'])->middleware('email_verified');
+        Route::get('/signature/dossier/{id}/contrat.pdf', [SignatureController::class, 'downloadSignedContract'])->middleware('email_verified');
+        Route::get('/signature/dossier/{id}/preuve.pdf', [SignatureController::class, 'downloadProof'])->middleware('email_verified');
+        Route::get('/contract-signing/my-contracts', [ContractSigningController::class, 'myContracts'])->middleware('email_verified');
         Route::get('/contract/preview', [InvoiceController::class, 'previewContract']);
         Route::get('/contract/download', [InvoiceController::class, 'downloadContract']);
 
         // KYC
         Route::post('/kyc/submit', [KycController::class, 'submit']);
+        Route::get('/kyc/download-zip', [KycController::class, 'downloadZip'])->middleware('email_verified');
         Route::middleware(CheckAdminRole::class)->group(function (): void {
             Route::post('/admin/kyc/approve', [KycController::class, 'approve']);
             Route::post('/admin/kyc/reject', [KycController::class, 'reject']);
@@ -212,7 +223,8 @@ Route::prefix('v1')->group(function (): void {
     // ===== Section NOUVEAU FLUX SOUSCRIPTION (Signature avant Paiement) =====
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::prefix('souscription')->group(function (): void {
-            Route::post('/draft', [SouscriptionNouveauFluxController::class, 'createDraft']);
+            Route::get('/{draftId}', [SouscriptionNouveauFluxController::class, 'getDraft']);
+        Route::post('/draft', [SouscriptionNouveauFluxController::class, 'createDraft']);
             Route::post('/{draftId}/approve', [SouscriptionNouveauFluxController::class, 'approveDraft']);
             Route::post('/{draftId}/email-link', [SouscriptionNouveauFluxController::class, 'collectEmail']);
             Route::post('/{draftId}/sign', [SouscriptionNouveauFluxController::class, 'signDraft']);

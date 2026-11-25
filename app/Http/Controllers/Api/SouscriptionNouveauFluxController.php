@@ -116,6 +116,37 @@ class SouscriptionNouveauFluxController extends Controller
         ]);
     }
 
+    /** GET /api/v1/souscription-nouveau-flux/{draftId} — Récupération des données du draft */
+    public function getDraft(int $draftId): JsonResponse
+    {
+        $draft = ContractDraft::find($draftId);
+        if (!$draft) {
+            return response()->json(['error' => 'Dossier introuvable.'], 404);
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            'draft_id' => $draft->id,
+            'flow_token' => $draft->flow_token,
+            'statut' => $draft->statut,
+            'pack' => $draft->pack,
+            'prix' => $draft->prix,
+            'signer_email' => $draft->signer_email,
+            'payer_email' => $draft->payer_email,
+            'contrat_data' => $draft->contrat_data,
+            'hash_brouillon' => $draft->hash_brouillon,
+            'hash_sha256' => $draft->hash_sha256,
+            'signed_pdf_path' => $draft->signed_pdf_path,
+            'ip_address' => $draft->ip_address,
+            'user_agent' => $draft->user_agent,
+            'session_id' => $draft->session_id,
+            'paiement_transaction_id' => $draft->paiement_transaction_id,
+            'otp_verified_at' => $draft->otp_verified_at,
+            'created_at' => $draft->created_at,
+            'updated_at' => $draft->updated_at,
+        ]);
+    }
+
     /** POST /api/v1/souscription-nouveau-flux/{draftId}/approve — Étape 2 : lecture du contrat + approbation */
     public function approveDraft(Request $request, int $draftId): JsonResponse
     {
