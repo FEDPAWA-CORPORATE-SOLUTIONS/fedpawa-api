@@ -135,7 +135,7 @@ class AdminMailController extends Controller
     /** POST /api/v1/admin/mails — envoyer un nouveau mail (admin). */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'destinataire' => ['required', 'email', 'max:255'],
             'copie' => ['nullable', 'array'],
             'copie.*' => ['email', 'max:255'],
@@ -149,21 +149,21 @@ class AdminMailController extends Controller
 
         $mailEnvoye = MailEnvoye::create([
             'expediteur' => $expediteur,
-            'destinataire' => $request->string('destinataire'),
-            'copie' => $request->validated('copie') ?? [],
-            'sujet' => $request->string('sujet'),
-            'corps_texte' => $request->string('corps_texte'),
-            'corps_html' => $request->string('corps_html'),
+            'destinataire' => $validated['destinataire'],
+            'copie' => $validated['copie'] ?? [],
+            'sujet' => $validated['sujet'],
+            'corps_texte' => $validated['corps_texte'],
+            'corps_html' => $validated['corps_html'],
             'statut' => 'en_attente',
         ]);
 
         try {
-            $sujetComplet = $request->string('sujet');
-            $html = $request->string('corps_html') ?? nl2br(e($request->string('corps_texte') ?? ''));
-            $texte = $request->string('corps_texte') ?? strip_tags($request->string('corps_html') ?? '');
+            $sujetComplet = $validated['sujet'];
+            $html = $validated['corps_html'] ?? nl2br(e($validated['corps_texte'] ?? ''));
+            $texte = $validated['corps_texte'] ?? strip_tags($validated['corps_html'] ?? '');
 
-            Mail::to($request->string('destinataire'))
-                ->cc($request->validated('copie') ?? [])
+            Mail::to($validated['destinataire'])
+                ->cc($validated['copie'] ?? [])
                 ->send(new EventMail(
                     'admin_courrier_sortant',
                     $sujetComplet,
@@ -171,7 +171,7 @@ class AdminMailController extends Controller
                     [
                         'expediteur' => $expediteur,
                         'nom_expediteur' => $nomExpediteur,
-                        'destinataire' => $request->string('destinataire'),
+                        'destinataire' => $validated['destinataire'],
                         'sujet' => $sujetComplet,
                         'corps_html' => $html,
                         'corps_texte' => $texte,
