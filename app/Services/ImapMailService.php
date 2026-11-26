@@ -264,18 +264,14 @@ class ImapMailService
     {
         // Trouver le pattern RFC822 {size}
         if (!preg_match('/RFC822\s*\{(\d+)\}\r\n/', $response, $match)) {
-            Log::debug('ImapMailService: pattern RFC822 {size} non trouvé dans la réponse');
             return '';
         }
         $size = (int) $match[1];
         $start = strpos($response, "\r\n", strpos($response, 'RFC822')) + 2;
         if ($start === false || $start + $size > strlen($response)) {
-            Log::debug('ImapMailService: position ou taille invalide pour le littéral RFC822', ['size' => $size, 'start' => $start, 'response_len' => strlen($response)]);
             return '';
         }
-        $literal = substr($response, $start, $size);
-        Log::debug('ImapMailService: littéral RFC822 extrait', ['size' => strlen($literal), 'first_200' => substr($literal, 0, 200)]);
-        return $literal;
+        return substr($response, $start, $size);
     }
 
     /** Extrait le corps texte d'une réponse RFC822 complète. */
@@ -415,11 +411,10 @@ class ImapMailService
     /** Sépare les en-têtes du corps dans une réponse RFC822. */
     private function extractRfc822Body(string $response): string
     {
-        // La réponse IMAP FETCH RFC822 peut contenir des lignes de tag et des accolades {size}
-        // Chercher le double CRLF qui sépare en-têtes et corps
+        // Le littéral RFC822 contient les en-têtes du message suivis d'une ligne vide,
+        // puis le corps. Le serveur PrivateEmail utilise \n\n comme séparateur.
         $headerEnd = strpos($response, "\r\n\r\n");
         if ($headerEnd === false) {
-            // Essayer avec simple \n\n
             $headerEnd = strpos($response, "\n\n");
             if ($headerEnd === false) {
                 return '';
@@ -663,19 +658,23 @@ class ImapMailService
     }
 
     /**
-     * Extrait la valeur d'un champ d'en-tête depuis une réponse FETCH.
+     * Extrait la valeur d'un champ d'en-tête depuis le littéral RFC822.
+     *
+     * Parse ligne par ligne pour gérer les en-têtes séparés par \n (sans \r)
+     * et les en-têtes pliés (continuation lines).
      */
     private function extractHeaderField(string $response, string $field): ?string
     {
-        // Le corps des en-têtes est entre accolades : {taille}\r\ncontenu\r\n
-        // Ou directement après BODY[] header
-        $pattern = '/' . preg_quote($field, '/') . ':\s*(.+?)(?:\r\n|\r|\n)/i';
-        if (preg_match($pattern, $response, $match)) {
-            $value = trim($match[1]);
-            // Décoder l'encodage MIME simple (ex: =?UTF-8?Q?...?=)
-            $decoded = $this->decodeMimeHeader($value);
-            Log::debug('ImapMailService: extractHeaderField', ['field' => $field, 'raw' => $value, 'decoded' => $decoded]);
-            return $decoded;
+        $prefix = $field . ':';
+        $lines = explode("\n", $response);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (stripos($line, $prefix) === 0) {
+                $value = trim(substr($line, strlen($prefix)));
+                // Gérer les en-têtes pliés (continuation lines commençant par un espace ou tab)
+                $decoded = $this->decodeMimeHeader($value);
+                return $decoded;
+            }
         }
         return null;
     }
