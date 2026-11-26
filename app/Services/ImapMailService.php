@@ -104,7 +104,7 @@ class ImapMailService
      *
      * @return array Tableau de messages avec uid, sujet, expediteur, date_recue, taille, lu
      */
-    public function listMessages(int $account = 1, int $limit = 50): array
+    public function listMessages(int $account = 1, int $limit = 50, string $mailbox = 'INBOX'): array
     {
         $socket = $this->connect($account);
         if (!$socket) {
@@ -113,7 +113,7 @@ class ImapMailService
 
         try {
             // Sélectionner la boîte de réception
-            $this->sendCommand($socket, "SELECT INBOX");
+            $this->sendCommand($socket, "SELECT {$mailbox}");
 
             // Rechercher tous les messages
             $searchResponse = $this->sendCommand($socket, "SEARCH ALL");
