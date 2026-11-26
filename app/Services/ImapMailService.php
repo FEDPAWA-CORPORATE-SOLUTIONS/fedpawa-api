@@ -144,6 +144,54 @@ class ImapMailService
         }
     }
 
+    /** Récupère le contenu complet d'un message (corps + pièces jointes) */
+    public function fetchFullMessage(int $account, int $uid): array
+    {
+        $socket = $this->connect($account);
+        if (!$socket) {
+            return [];
+        }
+
+        try {
+            $this->sendCommand($socket, "SELECT INBOX");
+            $fetchResponse = $this->sendCommand($socket, "FETCH {$uid} (RFC822)");
+
+            return [
+                'message_id' => $this->extractHeaderField($fetchResponse, 'Message-ID'),
+                'expediteur' => $this->extractHeaderField($fetchResponse, 'From'),
+                'destinataire' => $this->extractHeaderField($fetchResponse, 'To'),
+                'sujet' => $this->extractHeaderField($fetchResponse, 'Subject'),
+                'date_recue' => $this->extractHeaderField($fetchResponse, 'Date'),
+                'corps_texte' => $this->extractTextBody($fetchResponse),
+                'corps_html' => $this->extractHtmlBody($fetchResponse),
+                'pieces_jointes' => $this->extractAttachments($fetchResponse),
+            ];
+        } finally {
+            $this->disconnect($socket);
+        }
+    }
+
+    /** Extrait le corps texte d'une réponse RFC822 (stub) */
+    private function extractTextBody(string $response): string
+    {
+        // TODO: parser le corps texte depuis le contenu RFC822 complet
+        return '';
+    }
+
+    /** Extrait le corps HTML d'une réponse RFC822 (stub) */
+    private function extractHtmlBody(string $response): string
+    {
+        // TODO: parser le corps HTML depuis le contenu RFC822 complet
+        return '';
+    }
+
+    /** Extrait la liste des pièces jointes d'une réponse RFC822 (stub) */
+    private function extractAttachments(string $response): array
+    {
+        // TODO: parser les pièces jointes depuis le contenu RFC822 complet
+        return [];
+    }
+
     /**
      * Vérifie si la connexion IMAP fonctionne pour le compte spécifié.
      *

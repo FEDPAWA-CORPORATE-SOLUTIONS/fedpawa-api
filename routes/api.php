@@ -225,6 +225,30 @@ Route::prefix('v1')->group(function (): void {
                 $imap = app(ImapMailService::class);
                 return response()->json($imap->listMessages($account));
             })->whereNumber('account');
+            Route::post('/imap/sync/{account}', function (int $account) {
+                $imap = app(ImapMailService::class);
+                $messages = $imap->listMessages($account);
+                $synced = 0;
+                foreach ($messages as $m) {
+                    $full = $imap->fetchFullMessage($account, $m['uid']);
+                    $existing = \App\Models\MailRecu::where('message_id', $full['message_id'] ?? (string) $m['uid'])->first();
+                    if (!$existing) {
+                        \App\Models\MailRecu::create([
+                            'message_id' => $full['message_id'] ?? (string) $m['uid'],
+                            'expediteur' => $full['expediteur'] ?? $m['expediteur'],
+                            'destinataires' => [$full['destinataire'] ?? ''],
+                            'sujet' => $full['sujet'] ?? $m['sujet'],
+                            'corps_texte' => $full['corps_texte'] ?? '',
+                            'corps_html' => $full['corps_html'] ?? '',
+                            'pieces_jointes' => $full['pieces_jointes'] ?? [],
+                            'recu_le' => $full['recu_le'] ?? $m['date_recue'],
+                            'lu' => $m['lu'] ?? false,
+                        ]);
+                        $synced++;
+                    }
+                }
+                return response()->json(['synced' => $synced, 'total' => count($messages)]);
+            })->whereNumber('account');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
