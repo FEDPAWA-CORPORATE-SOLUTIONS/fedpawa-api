@@ -285,6 +285,7 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::prefix('souscription')->group(function (): void {
             Route::get('/{draftId}', [SouscriptionNouveauFluxController::class, 'getDraft']);
+        Route::get('/{draftId}/preview', [SouscriptionNouveauFluxController::class, 'previewDraft']);
         Route::post('/draft', [SouscriptionNouveauFluxController::class, 'createDraft']);
             Route::post('/{draftId}/approve', [SouscriptionNouveauFluxController::class, 'approveDraft']);
             Route::post('/{draftId}/email-link', [SouscriptionNouveauFluxController::class, 'collectEmail']);

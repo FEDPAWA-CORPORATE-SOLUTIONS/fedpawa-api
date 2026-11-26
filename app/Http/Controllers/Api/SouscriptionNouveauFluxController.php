@@ -198,6 +198,28 @@ class SouscriptionNouveauFluxController extends Controller
         ]);
     }
 
+    /** GET /api/v1/souscription/{draftId}/preview — Télécharger le contrat rempli (non signé) */
+    public function previewDraft(Request $request, int $draftId): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $draft = ContractDraft::find($draftId);
+        if (!$draft) {
+            abort(404, 'Dossier introuvable.');
+        }
+
+        $pdf = $this->pdfService->generateContract(array_merge([
+            'client_name' => $draft->contrat_data['nomComplet'] ?? $draft->contrat_data['nom'] ?? 'Client',
+            'company_name' => $draft->contrat_data['denomination'] ?? $draft->contrat_data['entreprise'] ?? 'Entreprise',
+            'price' => $draft->prix,
+            'details' => $draft->contrat_data,
+        ]));
+
+        $fileName = 'contrat_domiciliation_brouillon_' . $draftId . '.pdf';
+        $tempPath = storage_path('app/' . $fileName);
+        file_put_contents($tempPath, $pdf);
+
+        return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
+    }
+
     /** POST /api/v1/souscription-nouveau-flux/{draftId}/request-otp — Génère et envoie l'OTP de signature (24h) */
     public function requestSignatureOtp(Request $request, int $draftId): JsonResponse
     {
