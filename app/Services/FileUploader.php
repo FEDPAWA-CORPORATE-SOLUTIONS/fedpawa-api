@@ -38,6 +38,12 @@ class FileUploader
         $filename = uniqid('doc_').'_'.basename($file->getClientOriginalName());
         $path = $clientFolder.'/'.$filename;
 
+        // S'assurer que le dossier de destination existe
+        $uploadDir = 'uploads/'.$clientFolder;
+        if (! Storage::disk('local')->exists($uploadDir)) {
+            Storage::disk('local')->makeDirectory($uploadDir, 0755, true);
+        }
+
         if (! Storage::disk('local')->put('uploads/'.$path, file_get_contents($file->getRealPath()))) {
             throw new \Exception("Erreur lors de l'enregistrement du fichier.");
         }
