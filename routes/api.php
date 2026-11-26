@@ -215,6 +215,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/mail-categories', [UserCategoryController::class, 'index']);
             Route::post('/mail-categories', [UserCategoryController::class, 'store']);
             Route::delete('/mail-categories/{id}', [UserCategoryController::class, 'destroy'])->whereNumber('id');
+            Route::post('/mails/upload-piece-jointe', [AdminMailController::class, 'uploadPieceJointe']);
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====

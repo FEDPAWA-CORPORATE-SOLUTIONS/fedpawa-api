@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\EventMail;
 
 /**
@@ -142,6 +143,8 @@ class AdminMailController extends Controller
             'sujet' => ['required', 'string', 'max:255'],
             'corps_html' => ['nullable', 'string'],
             'corps_texte' => ['nullable', 'string'],
+            'pieces_jointes' => ['nullable', 'array'],
+            'pieces_jointes.*' => ['string', 'max:500'],
         ]);
 
         $expediteur = config('mail.from.address', 'contact@fedpawa.com');
@@ -154,6 +157,7 @@ class AdminMailController extends Controller
             'sujet' => $validated['sujet'],
             'corps_texte' => $validated['corps_texte'],
             'corps_html' => $validated['corps_html'],
+            'pieces_jointes' => $validated['pieces_jointes'] ?? [],
             'statut' => 'en_attente',
         ]);
 
@@ -212,6 +216,28 @@ class AdminMailController extends Controller
         }
     }
 
+    /** POST /api/v1/admin/mails/upload-piece-jointe — uploader une pièce jointe. */
+    public function uploadPieceJointe(Request $request): JsonResponse
+    {
+        $request->validate([
+            'fichier' => ['required', 'file', 'max:10240'], // 10 Mo max
+        ]);
+
+        $fichier = $request->file('fichier');
+        $nomOriginal = $fichier->getClientOriginalName();
+        $nomStockage = uniqid('pj_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $nomOriginal);
+        $chemin = $fichier->storeAs('mail-attachments', $nomStockage, 'public');
+
+        $url = Storage::url($chemin);
+
+        return response()->json([
+            'url' => $url,
+            'nom' => $nomOriginal,
+            'type' => $fichier->getMimeType(),
+            'taille' => $fichier->getSize(),
+        ], 201);
+    }
+
     /** POST /api/v1/admin/mails/{id}/replier — répondre à un mail reçu. */
     public function reply(Request $request, int $id): JsonResponse
     {
@@ -219,6 +245,8 @@ class AdminMailController extends Controller
             'corps_html' => ['nullable', 'string'],
             'corps_texte' => ['nullable', 'string'],
             'sujet' => ['sometimes', 'string', 'max:255'],
+            'pieces_jointes' => ['nullable', 'array'],
+            'pieces_jointes.*' => ['string', 'max:500'],
         ]);
 
         $mailRecu = MailRecu::find($id);
@@ -243,6 +271,7 @@ class AdminMailController extends Controller
             'sujet' => $sujetReponse,
             'corps_texte' => $request->string('corps_texte'),
             'corps_html' => $request->string('corps_html'),
+            'pieces_jointes' => $request->validated('pieces_jointes') ?? [],
             'statut' => 'en_attente',
         ]);
 
