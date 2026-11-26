@@ -212,6 +212,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/mails/{id}', [AdminMailController::class, 'show'])->whereNumber('id');
             Route::post('/mails/{id}/lu', [AdminMailController::class, 'marquerLu'])->whereNumber('id');
             Route::post('/mails/{id}/replier', [AdminMailController::class, 'reply'])->whereNumber('id');
+            Route::patch('/mails/{id}/categorie', [AdminMailController::class, 'updateCategorie'])->whereNumber('id');
             Route::get('/mails/envoyes', [AdminMailController::class, 'envoyes']);
             Route::get('/mail-categories', [UserCategoryController::class, 'index']);
             Route::post('/mail-categories', [UserCategoryController::class, 'store']);

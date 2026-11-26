@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MailEnvoye;
 use App\Models\MailRecu;
+use App\Models\UserCategory;
 use App\Services\AuditLogger;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,8 @@ class AdminMailController extends Controller
             'recu_le' => $m->recu_le?->toIso8601String(),
             'lu' => (bool) $m->lu,
             'nb_pieces_jointes' => count($m->pieces_jointes ?? []),
+            'categorie' => $m->categorie?->nom,
+            'categorie_couleur' => $m->categorie?->couleur,
         ];
     }
 
@@ -127,6 +130,29 @@ class AdminMailController extends Controller
         $n = MailRecu::where('lu', false)->update(['lu' => true]);
 
         return response()->json(['marques_lus' => $n]);
+    }
+
+    /** PATCH /api/v1/admin/mails/{id}/categorie — affecter une catégorie à un mail reçu (drag & drop). */
+    public function updateCategorie(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'categorie_id' => 'nullable|exists:user_categories,id',
+        ]);
+
+        $mail = MailRecu::find($id);
+        if (!$mail) {
+            return response()->json(['error' => 'Mail non trouvé'], 404);
+        }
+
+        $mail->categorie_id = $request->categorie_id;
+        $mail->save();
+
+        return response()->json([
+            'id' => $mail->id,
+            'categorie_id' => $mail->categorie_id,
+            'categorie' => $mail->categorie?->nom,
+            'categorie_couleur' => $mail->categorie?->couleur,
+        ]);
     }
 
     /** Récupère l'ID de la catégorie par défaut (première catégorie système, sinon la première catégorie). */
