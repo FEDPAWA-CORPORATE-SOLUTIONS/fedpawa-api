@@ -229,6 +229,10 @@ Route::prefix('v1')->group(function (): void {
                 $imap = app(ImapMailService::class);
                 return response()->json($imap->listMessages($account, 50, $mailbox));
             })->whereNumber('account');
+            Route::get('/imap/search/{account}/{query}', function (int $account, string $query) {
+                $imap = app(ImapMailService::class);
+                return response()->json($imap->searchMessages($account, $query));
+            })->whereNumber('account');
             Route::post('/imap/sync/{account}', function (int $account) {
                 $imap = app(ImapMailService::class);
                 $messages = $imap->listMessages($account);

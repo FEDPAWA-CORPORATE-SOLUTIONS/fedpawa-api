@@ -144,6 +144,44 @@ class ImapMailService
         }
     }
 
+    /** Recherche des messages par sujet ou expéditeur via IMAP SEARCH */
+    public function searchMessages(int $account = 1, string $query, int $limit = 50): array
+    {
+        $socket = $this->connect($account);
+        if (!$socket) {
+            return [];
+        }
+
+        try {
+            $this->sendCommand($socket, "SELECT INBOX");
+
+            // Recherche par sujet ou expéditeur
+            $searchCmd = "SEARCH (SUBJECT \"{$query}\" OR FROM \"{$query}\")";
+            $searchResponse = $this->sendCommand($socket, $searchCmd);
+            $messageIds = $this->parseSearchResponse($searchResponse);
+
+            if (empty($messageIds)) {
+                return [];
+            }
+
+            rsort($messageIds);
+            $messageIds = array_slice($messageIds, 0, $limit);
+
+            $messages = [];
+            foreach ($messageIds as $msgNo) {
+                $fetchResponse = $this->sendCommand($socket, "FETCH {$msgNo} (BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])");
+                $parsed = $this->parseFetchResponse($fetchResponse);
+                if ($parsed) {
+                    $messages[] = $parsed;
+                }
+            }
+
+            return $messages;
+        } finally {
+            $this->disconnect($socket);
+        }
+    }
+
     /** Récupère le contenu complet d'un message (corps + pièces jointes) */
     public function fetchFullMessage(int $account, int $uid): array
     {
