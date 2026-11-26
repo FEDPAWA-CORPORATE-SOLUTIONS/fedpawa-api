@@ -31,6 +31,13 @@ class SouscriptionController extends Controller
 {
     /** Catalogue de packs côté serveur (prix mensuel en FCFA — source de vérité). */
     private const PACKS_SERVER = [
+        // Packs de domiciliation (spec GeneriqueFormulaire)
+        'national-basic' => 25000,
+        'national-pro' => 45000,
+        'national-premium' => 75000,
+        'international-basic' => 120000,
+        'international-pro' => 200000,
+        // Packs existants (conservés pour rétrocompatibilité)
         'national-essential' => 25000,
         'national-business' => 45000,
         'national-premium' => 70000,
