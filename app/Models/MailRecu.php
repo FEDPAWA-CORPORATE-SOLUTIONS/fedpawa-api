@@ -14,7 +14,7 @@ class MailRecu extends Model
 
     protected $fillable = [
         'resend_email_id', 'expediteur', 'destinataires', 'copie', 'sujet',
-        'corps_texte', 'corps_html', 'pieces_jointes', 'message_id', 'recu_le', 'lu', 'categorie_id',
+        'corps_texte', 'corps_html', 'pieces_jointes', 'message_id', 'recu_le', 'lu', 'categorie_id', 'imap_account', 'imap_uid',
     ];
 
     protected $casts = [
@@ -24,6 +24,8 @@ class MailRecu extends Model
         'recu_le' => 'datetime',
         'lu' => 'boolean',
         'categorie_id' => 'integer',
+        'imap_account' => 'integer',
+        'imap_uid' => 'integer',
     ];
 
     public function categorie()

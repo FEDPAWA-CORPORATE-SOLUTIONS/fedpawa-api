@@ -142,6 +142,7 @@ class ImapMailService
                 $parsed = $this->parseFetchResponse($fetchResponse);
 
                 if ($parsed) {
+                    $parsed['uid'] = $msgNo;
                     $messages[] = $parsed;
                 }
             }
@@ -180,6 +181,7 @@ class ImapMailService
                 $fetchResponse = $this->sendCommand($socket, "FETCH {$msgNo} (BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])");
                 $parsed = $this->parseFetchResponse($fetchResponse);
                 if ($parsed) {
+                    $parsed['uid'] = $msgNo;
                     $messages[] = $parsed;
                 }
             }
@@ -217,25 +219,270 @@ class ImapMailService
         }
     }
 
-    /** Extrait le corps texte d'une réponse RFC822 (stub) */
+    /** Extrait le corps texte d'une réponse RFC822 complète. */
     private function extractTextBody(string $response): string
     {
-        // TODO: parser le corps texte depuis le contenu RFC822 complet
-        return '';
+        // Séparer les en-têtes du corps
+        $body = $this->extractRfc822Body($response);
+        if ($body === '') {
+            return '';
+        }
+
+        // Déterminer le Content-Type principal
+        $contentType = $this->extractHeaderField($response, 'Content-Type') ?? 'text/plain';
+        $charset = $this->extractCharset($contentType);
+
+        // Si c'est multipart, parser les parties
+        if (stripos($contentType, 'multipart/') === 0) {
+            $boundary = $this->extractBoundary($contentType);
+            if ($boundary === null) {
+                return $this->decodeBody($body, $charset);
+            }
+            $parts = $this->parseMultipart($body, $boundary);
+            foreach ($parts as $part) {
+                $partContentType = $part['headers']['content-type'] ?? 'text/plain';
+                if (stripos($partContentType, 'text/plain') === 0) {
+                    $partCharset = $this->extractCharset($partContentType);
+                    return $this->decodeBody($part['body'], $partCharset);
+                }
+            }
+            // Aucun text/plain trouvé, retourner le premier corps textuel disponible
+            foreach ($parts as $part) {
+                $partContentType = $part['headers']['content-type'] ?? '';
+                if (stripos($partContentType, 'text/') === 0) {
+                    $partCharset = $this->extractCharset($partContentType);
+                    return $this->decodeBody($part['body'], $partCharset);
+                }
+            }
+        }
+
+        return $this->decodeBody($body, $charset);
     }
 
-    /** Extrait le corps HTML d'une réponse RFC822 (stub) */
+    /** Extrait le corps HTML d'une réponse RFC822 complète. */
     private function extractHtmlBody(string $response): string
     {
-        // TODO: parser le corps HTML depuis le contenu RFC822 complet
+        $body = $this->extractRfc822Body($response);
+        if ($body === '') {
+            return '';
+        }
+
+        $contentType = $this->extractHeaderField($response, 'Content-Type') ?? 'text/plain';
+
+        if (stripos($contentType, 'multipart/') === 0) {
+            $boundary = $this->extractBoundary($contentType);
+            if ($boundary === null) {
+                return $this->decodeBody($body, $this->extractCharset($contentType));
+            }
+            $parts = $this->parseMultipart($body, $boundary);
+            foreach ($parts as $part) {
+                $partContentType = $part['headers']['content-type'] ?? 'text/plain';
+                if (stripos($partContentType, 'text/html') === 0) {
+                    $partCharset = $this->extractCharset($partContentType);
+                    return $this->decodeBody($part['body'], $partCharset);
+                }
+            }
+            // Fallback : premier text/ trouvé
+            foreach ($parts as $part) {
+                $partContentType = $part['headers']['content-type'] ?? '';
+                if (stripos($partContentType, 'text/html') === 0) {
+                    $partCharset = $this->extractCharset($partContentType);
+                    return $this->decodeBody($part['body'], $partCharset);
+                }
+            }
+        } elseif (stripos($contentType, 'text/html') === 0) {
+            return $this->decodeBody($body, $this->extractCharset($contentType));
+        }
+
         return '';
     }
 
-    /** Extrait la liste des pièces jointes d'une réponse RFC822 (stub) */
+    /** Extrait la liste des pièces jointes d'une réponse RFC822 complète. */
     private function extractAttachments(string $response): array
     {
-        // TODO: parser les pièces jointes depuis le contenu RFC822 complet
-        return [];
+        $body = $this->extractRfc822Body($response);
+        if ($body === '') {
+            return [];
+        }
+
+        $contentType = $this->extractHeaderField($response, 'Content-Type') ?? 'text/plain';
+
+        if (stripos($contentType, 'multipart/') !== 0) {
+            return [];
+        }
+
+        $boundary = $this->extractBoundary($contentType);
+        if ($boundary === null) {
+            return [];
+        }
+
+        $parts = $this->parseMultipart($body, $boundary);
+        $attachments = [];
+
+        foreach ($parts as $part) {
+            $partHeaders = $part['headers'] ?? [];
+            $partContentType = $partHeaders['content-type'] ?? '';
+            $contentDisposition = $partHeaders['content-disposition'] ?? '';
+
+            // Une pièce jointe a généralement Content-Disposition: attachment
+            if (stripos($contentDisposition, 'attachment') !== 0) {
+                continue;
+            }
+
+            $filename = $this->extractFilename($contentDisposition);
+            if ($filename === null) {
+                $filename = $this->extractHeaderField($partHeaders['content-type'] ?? '', 'name') ?? 'piece-jointe';
+            }
+
+            $partCharset = $this->extractCharset($partContentType);
+            $decodedBody = $this->decodeBody($part['body'], $partCharset);
+
+            $attachments[] = [
+                'nom' => $filename,
+                'type' => $this->extractMimeType($partContentType),
+                'taille' => strlen($decodedBody),
+                'contenu' => base64_encode($decodedBody), // Stocké en base64 pour le JSON
+                'content_transfer_encoding' => $partHeaders['content-transfer-encoding'] ?? '7bit',
+            ];
+        }
+
+        return $attachments;
+    }
+
+    // ============================================================
+    // Helpers privés de parsing MIME/RFC822
+    // ============================================================
+
+    /** Sépare les en-têtes du corps dans une réponse RFC822. */
+    private function extractRfc822Body(string $response): string
+    {
+        // La réponse IMAP FETCH RFC822 peut contenir des lignes de tag et des accolades {size}
+        // Chercher le double CRLF qui sépare en-têtes et corps
+        $headerEnd = strpos($response, "\r\n\r\n");
+        if ($headerEnd === false) {
+            // Essayer avec simple \n\n
+            $headerEnd = strpos($response, "\n\n");
+            if ($headerEnd === false) {
+                return '';
+            }
+            return substr($response, $headerEnd + 2);
+        }
+        return substr($response, $headerEnd + 4);
+    }
+
+    /** Extrait le charset depuis un en-tête Content-Type. */
+    private function extractCharset(string $contentType): string
+    {
+        if (preg_match('/charset\s*=\s*["\']?([^\s";]+)/i', $contentType, $match)) {
+            return strtoupper(trim($match[1], '"\''));
+        }
+        return 'UTF-8';
+    }
+
+    /** Extrait la boundary depuis un Content-Type multipart. */
+    private function extractBoundary(string $contentType): ?string
+    {
+        if (preg_match('/boundary\s*=\s*["\']?([^\s";]+)/i', $contentType, $match)) {
+            return trim($match[1], '"\'' );
+        }
+        return null;
+    }
+
+    /** Parse un corps multipart en parties individuelles. */
+    private function parseMultipart(string $body, string $boundary): array
+    {
+        $delimiter = '--' . $boundary;
+        $parts = [];
+        $chunks = explode($delimiter, $body);
+
+        foreach ($chunks as $chunk) {
+            $chunk = trim($chunk);
+            if ($chunk === '' || $chunk === '--') {
+                continue;
+            }
+
+            // Séparer en-têtes de partie et corps
+            $headerEnd = strpos($chunk, "\r\n\r\n");
+            if ($headerEnd === false) {
+                $headerEnd = strpos($chunk, "\n\n");
+                if ($headerEnd === false) {
+                    continue;
+                }
+                $partHeadersStr = '';
+                $partBody = substr($chunk, $headerEnd + 2);
+            } else {
+                $partHeadersStr = substr($chunk, 0, $headerEnd);
+                $partBody = substr($chunk, $headerEnd + 4);
+            }
+
+            // Nettoyer le corps (supprimer le CRLF final et les --boundary--)
+            $partBody = rtrim($partBody, "\r\n");
+            if (substr($partBody, -2) === '--') {
+                $partBody = rtrim(substr($partBody, 0, -2), "\r\n");
+            }
+
+            $headers = [];
+            foreach (explode("\r\n", $partHeadersStr) as $headerLine) {
+                if (strpos($headerLine, ':') !== false) {
+                    list($key, $value) = explode(':', $headerLine, 2);
+                    $headers[strtolower(trim($key))] = trim($value);
+                }
+            }
+
+            $parts[] = [
+                'headers' => $headers,
+                'body' => $partBody,
+            ];
+        }
+
+        return $parts;
+    }
+
+    /** Décode le corps selon l'encodage Content-Transfer-Encoding. */
+    private function decodeBody(string $body, string $charset): string
+    {
+        // Le corps brut du FETCH peut avoir un CRLF de fin
+        $body = rtrim($body, "\r\n");
+
+        // Détecter l'encodage de transfert depuis les en-têtes (passé via le contexte)
+        // Par défaut, essayer base64 si le contenu ressemble à du base64
+        if (preg_match('/^[A-Za-z0-9+\/=\s]+$/', $body) && strlen($body) > 0 && strlen($body) % 4 === 0) {
+            $decoded = base64_decode($body, true);
+            if ($decoded !== false) {
+                $body = $decoded;
+            }
+        }
+
+        // Convertir le charset si nécessaire
+        if ($charset !== 'UTF-8' && $charset !== '') {
+            $converted = iconv($charset, 'UTF-8//IGNORE', $body);
+            if ($converted !== false) {
+                $body = $converted;
+            }
+        }
+
+        return $body;
+    }
+
+    /** Extrait le nom de fichier depuis Content-Disposition. */
+    private function extractFilename(string $contentDisposition): ?string
+    {
+        if (preg_match('/filename\s*=\s*["\']?([^\s";]+)/i', $contentDisposition, $match)) {
+            return trim($match[1], '"\'' );
+        }
+        if (preg_match('/filename\*\s*=\s*UTF-8\'\'([^\s;]+)/i', $contentDisposition, $match)) {
+            return rawurldecode($match[1]);
+        }
+        return null;
+    }
+
+    /** Extrait le type MIME depuis un Content-Type. */
+    private function extractMimeType(string $contentType): string
+    {
+        if (preg_match('/^([^\s;]+)/', $contentType, $match)) {
+            return trim($match[1]);
+        }
+        return 'application/octet-stream';
     }
 
     /**
@@ -378,5 +625,42 @@ class ImapMailService
     private function decodeMimeHeader(string $value): string
     {
         return iconv_mime_decode($value, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8') ?? $value;
+    }
+
+    /** Marque un message comme lu sur le serveur IMAP (STORE \Seen). */
+    public function markAsSeen(int $account, int $uid): bool
+    {
+        $socket = $this->connect($account);
+        if (!$socket) {
+            return false;
+        }
+
+        try {
+            $this->sendCommand($socket, "SELECT INBOX");
+            $response = $this->sendCommand($socket, "STORE {$uid} +FLAGS (\\Seen)");
+            return stripos($response, 'OK') !== false;
+        } finally {
+            $this->disconnect($socket);
+        }
+    }
+
+    /** Marque un message comme supprimé sur le serveur IMAP (STORE \Deleted + EXPUNGE). */
+    public function markAsDeleted(int $account, int $uid): bool
+    {
+        $socket = $this->connect($account);
+        if (!$socket) {
+            return false;
+        }
+
+        try {
+            $this->sendCommand($socket, "SELECT INBOX");
+            $ok = stripos($this->sendCommand($socket, "STORE {$uid} +FLAGS (\\Deleted)"), 'OK') !== false;
+            if ($ok) {
+                $this->sendCommand($socket, "EXPUNGE");
+            }
+            return $ok;
+        } finally {
+            $this->disconnect($socket);
+        }
     }
 }

@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\PublicationController;
 use App\Http\Controllers\Api\PublicationLectureController;
 use App\Http\Controllers\Api\PortantSignController;
 use App\Http\Controllers\Api\ResendWebhookController;
+use App\Http\Controllers\Api\PrivateEmailWebhookController;
 use App\Http\Middleware\CheckAdminRole;
 use App\Services\ImapMailService;
 use Illuminate\Http\Request;
@@ -64,6 +65,10 @@ Route::prefix('v1')->group(function (): void {
     // ===== Section RESEND-MAIL (CONTRAT-MAIL.md §2) — webhook public Resend =====
     Route::post('/webhooks/resend', [ResendWebhookController::class, 'handle']);
     // ===== Fin section RESEND-MAIL (webhook) =====
+
+    // ===== Section PRIVATEEMAIL-MAIL — webhook statut mails sortants =====
+    Route::post('/webhooks/privateemail', [PrivateEmailWebhookController::class, 'handle']);
+    // ===== Fin section PRIVATEEMAIL-MAIL (webhook) =====
 
     // ===== Section PUSH PWA =====
     // VAPID public : la clé publique n'est pas un secret (le PWA en a besoin
@@ -254,6 +259,8 @@ Route::prefix('v1')->group(function (): void {
                             'recu_le' => $full['recu_le'] ?? $m['date_recue'],
                             'lu' => $m['lu'] ?? false,
                             'categorie_id' => $defaultCategoryId,
+                            'imap_account' => $account,
+                            'imap_uid' => $m['uid'] ?? 0,
                         ]);
                         $synced++;
                     }

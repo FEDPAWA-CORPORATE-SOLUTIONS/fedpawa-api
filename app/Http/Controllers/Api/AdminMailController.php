@@ -7,6 +7,7 @@ use App\Models\MailEnvoye;
 use App\Models\MailRecu;
 use App\Models\UserCategory;
 use App\Services\AuditLogger;
+use App\Services\ImapMailService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -111,7 +112,7 @@ class AdminMailController extends Controller
         ]);
     }
 
-    /** POST /api/v1/admin/mails/{id}/lu — marquer comme lu. */
+    /** POST /api/v1/admin/mails/{id}/lu — marquer comme lu (base + IMAP). */
     public function marquerLu(int $id): JsonResponse
     {
         $mail = MailRecu::find($id);
@@ -120,6 +121,12 @@ class AdminMailController extends Controller
         }
         $mail->lu = true;
         $mail->save();
+
+        // Sync IMAP bidirectionnelle : marquer comme lu sur le serveur
+        if ($mail->imap_account && $mail->imap_uid) {
+            $imap = app(ImapMailService::class);
+            $imap->markAsSeen($mail->imap_account, $mail->imap_uid);
+        }
 
         return response()->json(['mail' => $this->resourceResume($mail)]);
     }
@@ -165,13 +172,20 @@ class AdminMailController extends Controller
         return UserCategory::first()?->id;
     }
 
-    /** DELETE /api/v1/admin/mails/{id} — supprimer un mail reçu. */
+    /** DELETE /api/v1/admin/mails/{id} — supprimer un mail reçu (base + IMAP). */
     public function destroy(int $id): JsonResponse
     {
         $mail = MailRecu::find($id);
         if (! $mail) {
             return response()->json(['error' => 'Mail introuvable'], 404);
         }
+
+        // Sync IMAP bidirectionnelle : marquer comme supprimé sur le serveur
+        if ($mail->imap_account && $mail->imap_uid) {
+            $imap = app(ImapMailService::class);
+            $imap->markAsDeleted($mail->imap_account, $mail->imap_uid);
+        }
+
         $mail->delete();
 
         return response()->json(['message' => 'Mail supprimé']);
