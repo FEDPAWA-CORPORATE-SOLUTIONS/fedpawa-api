@@ -129,6 +129,16 @@ class AdminMailController extends Controller
         return response()->json(['marques_lus' => $n]);
     }
 
+    /** Récupère l'ID de la catégorie par défaut (première catégorie système, sinon la première catégorie). */
+    public static function getDefaultCategoryId(): ?int
+    {
+        $cat = UserCategory::where('est_systeme', true)->first();
+        if ($cat) {
+            return $cat->id;
+        }
+        return UserCategory::first()?->id;
+    }
+
     /** DELETE /api/v1/admin/mails/{id} — supprimer un mail reçu. */
     public function destroy(int $id): JsonResponse
     {

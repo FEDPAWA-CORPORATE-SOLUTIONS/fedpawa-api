@@ -237,6 +237,7 @@ Route::prefix('v1')->group(function (): void {
                 $imap = app(ImapMailService::class);
                 $messages = $imap->listMessages($account);
                 $synced = 0;
+                $defaultCategoryId = \App\Http\Controllers\Api\AdminMailController::getDefaultCategoryId();
                 foreach ($messages as $m) {
                     $full = $imap->fetchFullMessage($account, $m['uid']);
                     $existing = \App\Models\MailRecu::where('message_id', $full['message_id'] ?? (string) $m['uid'])->first();
@@ -251,6 +252,7 @@ Route::prefix('v1')->group(function (): void {
                             'pieces_jointes' => $full['pieces_jointes'] ?? [],
                             'recu_le' => $full['recu_le'] ?? $m['date_recue'],
                             'lu' => $m['lu'] ?? false,
+                            'categorie_id' => $defaultCategoryId,
                         ]);
                         $synced++;
                     }
