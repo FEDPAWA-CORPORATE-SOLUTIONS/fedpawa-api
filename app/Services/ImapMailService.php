@@ -5,7 +5,9 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Connexion IMAP pour la lecture des mails reçus depuis la boîte PrivateEmail.
+ * Client IMAP minimal basé sur des sockets PHP brutes (SSL/TLS).
+ *
+ * Nécessite uniquement les fonctions stream_socket_* de PHP (standard, aucune extension additionnelle).
  *
  * Variables d'environnement attendues :
  *   IMAP_HOST, IMAP_PORT
@@ -24,9 +26,9 @@ class ImapMailService
     }
 
     /**
-     * Établit une connexion IMAP vers le compte spécifié (1 ou 2).
+     * Ouvre une connexion IMAP SSL vers le compte spécifié (1 ou 2).
      *
-     * @return resource|false Ressource IMAP ou false en cas d'échec
+     * @return resource|false Flux de socket ou false en cas d'échec
      */
     public function connect(int $account = 1)
     {
@@ -38,73 +40,107 @@ class ImapMailService
             return false;
         }
 
-        $mailbox = "{{$this->host}:{$this->port}/imap/ssl/novalidate-cert}}INBOX";
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true,
+            ],
+        ]);
 
-        $connection = imap_open($mailbox, $username, $password);
+        $address = "ssl://{$this->host}:{$this->port}";
+        $timeout = 30;
+        $errno = null;
+        $errstr = null;
 
-        if (!$connection) {
-            $errors = imap_last_error();
-            Log::warning("ImapMailService: échec de connexion IMAP compte {$account}: " . $errors);
-            imap_errors(); // efface la pile d'erreurs
+        $socket = stream_socket_client($address, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+
+        if (!$socket) {
+            Log::warning("ImapMailService: impossible de se connecter à {$address}: {$errstr} (errno {$errno})");
             return false;
         }
 
-        Log::info("ImapMailService: connecté au compte {$account} sur {$this->host}");
-        return $connection;
+        stream_set_timeout($socket, $timeout);
+
+        // Lire la bannière de bienvenue du serveur IMAP
+        $banner = $this->readLine($socket);
+        if ($banner === false) {
+            fclose($socket);
+            Log::warning("ImapMailService: pas de bannière IMAP reçue depuis {$this->host}");
+            return false;
+        }
+
+        // Vérifier que le serveur supporte IMAP4rev1
+        if (!preg_match('/\* OK.*IMAP4rev1/i', $banner)) {
+            Log::warning("ImapMailService: serveur non-IMAP détecté sur {$this->host}: " . trim($banner));
+            fclose($socket);
+            return false;
+        }
+
+        // Authentification
+        if (!$this->sendCommand($socket, "LOGIN {$username} {$password}")) {
+            fclose($socket);
+            Log::warning("ImapMailService: échec LOGIN pour le compte {$account}");
+            return false;
+        }
+
+        Log::info("ImapMailService: connecté et authentifié au compte {$account} sur {$this->host}");
+        return $socket;
     }
 
     /**
-     * Ferme proprement une connexion IMAP.
+     * Ferme proprement la connexion IMAP.
      */
-    public function disconnect($connection): void
+    public function disconnect($socket): void
     {
-        if ($connection) {
-            imap_close($connection, CL_EXPUNGE);
+        if ($socket) {
+            $this->sendCommand($socket, "LOGOUT");
+            fclose($socket);
         }
     }
 
     /**
      * Récupère la liste des messages dans la boîte de réception.
      *
-     * @return array Tableau de messages avec uid, sujet, expediteur, date_recue, taille
+     * @return array Tableau de messages avec uid, sujet, expediteur, date_recue, taille, lu
      */
     public function listMessages(int $account = 1, int $limit = 50): array
     {
-        $connection = $this->connect($account);
-        if (!$connection) {
+        $socket = $this->connect($account);
+        if (!$socket) {
             return [];
         }
 
         try {
-            $emails = imap_search($connection, 'ALL');
+            // Sélectionner la boîte de réception
+            $this->sendCommand($socket, "SELECT INBOX");
 
-            if (empty($emails)) {
+            // Rechercher tous les messages
+            $searchResponse = $this->sendCommand($socket, "SEARCH ALL");
+            $messageIds = $this->parseSearchResponse($searchResponse);
+
+            if (empty($messageIds)) {
                 return [];
             }
 
-            // Trier par UID descendant (plus récent d'abord) et limiter
-            rsort($emails);
-            $emails = array_slice($emails, 0, $limit);
+            // Trier par ID descendant (plus récent d'abord) et limiter
+            rsort($messageIds);
+            $messageIds = array_slice($messageIds, 0, $limit);
 
             $messages = [];
 
-            foreach ($emails as $msgNo) {
-                $header = imap_headerinfo($connection, $msgNo);
-                $overview = imap_fetch_overview($connection, $msgNo, 0);
+            foreach ($messageIds as $msgNo) {
+                $fetchResponse = $this->sendCommand($socket, "FETCH {$msgNo} (BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])");
+                $parsed = $this->parseFetchResponse($fetchResponse);
 
-                $messages[] = [
-                    'uid' => $msgNo,
-                    'sujet' => $header->subject ?? '(sans sujet)',
-                    'expediteur' => $header->fromaddress ?? '',
-                    'date_recue' => $header->date ?? '',
-                    'taille' => $overview[0]->size ?? 0,
-                    'lu' => !str_contains((string) $header->Recent, 'Recent'),
-                ];
+                if ($parsed) {
+                    $messages[] = $parsed;
+                }
             }
 
             return $messages;
         } finally {
-            $this->disconnect($connection);
+            $this->disconnect($socket);
         }
     }
 
@@ -117,19 +153,136 @@ class ImapMailService
     {
         $username = env("IMAP_USERNAME{$account}", '');
 
-        $connection = $this->connect($account);
-        if (!$connection) {
+        $socket = $this->connect($account);
+        if (!$socket) {
             return [
                 'success' => false,
                 'message' => "Échec de la connexion IMAP compte {$account} ({$username})",
             ];
         }
 
-        $this->disconnect($connection);
+        $this->disconnect($socket);
 
         return [
             'success' => true,
             'message' => "Connexion IMAP réussie au compte {$account} ({$username})",
         ];
+    }
+
+    // ============================================================
+    // Méthodes privées de bas niveau
+    // ============================================================
+
+    /**
+     * Envoie une commande IMAP et lit la réponse jusqu'à la ligne de statut finale.
+     *
+     * @return string Réponse brute du serveur
+     */
+    private function sendCommand($socket, string $command): string
+    {
+        $tag = 'A' . uniqid('', true);
+        $fullCommand = "{$tag} {$command}\r\n";
+        fwrite($socket, $fullCommand);
+
+        $response = '';
+        $tagged = false;
+
+        while (!feof($socket)) {
+            $line = $this->readLine($socket);
+            if ($line === false) {
+                break;
+            }
+
+            $response .= $line . "\r\n";
+
+            // Une ligne de statut finale commence par le tag
+            if (preg_match("/^{$tag} (OK|NO|BAD|PREAUTH|BYE)/i", $line)) {
+                $tagged = true;
+                break;
+            }
+        }
+
+        return $response;
+    }
+
+    /**
+     * Lit une ligne depuis le socket IMAP (supprime le \r\n final).
+     *
+     * @return string|false
+     */
+    private function readLine($socket): string|false
+    {
+        $line = fgets($socket, 4096);
+        if ($line === false) {
+            return false;
+        }
+        return rtrim($line, "\r\n");
+    }
+
+    /**
+     * Analyse la réponse SEARCH pour extraire les numéros de messages.
+     */
+    private function parseSearchResponse(string $response): array
+    {
+        // Le serveur répond : * SEARCH 1 2 3 4 5
+        // ou : * SEARCH (réponse vide)
+        if (!preg_match_all('/\* SEARCH\s+((?:\d+\s+)*)/', $response, $matches)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($matches[1] as $group) {
+            preg_match_all('/\d+/', $group, $numbers);
+            $ids = array_merge($ids, $numbers[0]);
+        }
+
+        return array_map('intval', $ids);
+    }
+
+    /**
+     * Analyse la réponse FETCH pour extraire sujet, expéditeur et date.
+     */
+    private function parseFetchResponse(string $response): ?array
+    {
+        // Rechercher le sujet
+        $sujet = $this->extractHeaderField($response, 'Subject');
+        $expediteur = $this->extractHeaderField($response, 'From');
+        $date = $this->extractHeaderField($response, 'Date');
+
+        if ($sujet === null && $expediteur === null && $date === null) {
+            return null;
+        }
+
+        return [
+            'sujet' => $sujet ?? '(sans sujet)',
+            'expediteur' => $expediteur ?? '',
+            'date_recue' => $date ?? '',
+            'taille' => strlen($response),
+            'lu' => true, // BODY.PEEK ne marque pas comme lu
+        ];
+    }
+
+    /**
+     * Extrait la valeur d'un champ d'en-tête depuis une réponse FETCH.
+     */
+    private function extractHeaderField(string $response, string $field): ?string
+    {
+        // Le corps des en-têtes est entre accolades : {taille}\r\ncontenu\r\n
+        // Ou directement après BODY[] header
+        $pattern = '/' . preg_quote($field, '/') . ':\s*(.+?)(?:\r\n|\r|\n)/i';
+        if (preg_match($pattern, $response, $match)) {
+            $value = trim($match[1]);
+            // Décoder l'encodage MIME simple (ex: =?UTF-8?Q?...?=)
+            return $this->decodeMimeHeader($value);
+        }
+        return null;
+    }
+
+    /**
+     * Décode un en-tête MIME encodé (encodage Q ou B).
+     */
+    private function decodeMimeHeader(string $value): string
+    {
+        return iconv_mime_decode($value, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8') ?? $value;
     }
 }
