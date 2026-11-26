@@ -264,14 +264,18 @@ class ImapMailService
     {
         // Trouver le pattern RFC822 {size}
         if (!preg_match('/RFC822\s*\{(\d+)\}\r\n/', $response, $match)) {
+            Log::debug('ImapMailService: pattern RFC822 {size} non trouvé dans la réponse');
             return '';
         }
         $size = (int) $match[1];
         $start = strpos($response, "\r\n", strpos($response, 'RFC822')) + 2;
         if ($start === false || $start + $size > strlen($response)) {
+            Log::debug('ImapMailService: position ou taille invalide pour le littéral RFC822', ['size' => $size, 'start' => $start, 'response_len' => strlen($response)]);
             return '';
         }
-        return substr($response, $start, $size);
+        $literal = substr($response, $start, $size);
+        Log::debug('ImapMailService: littéral RFC822 extrait', ['size' => strlen($literal), 'first_200' => substr($literal, 0, 200)]);
+        return $literal;
     }
 
     /** Extrait le corps texte d'une réponse RFC822 complète. */
