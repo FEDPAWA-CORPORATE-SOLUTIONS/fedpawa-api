@@ -29,6 +29,7 @@ class SubscriptionService
         if (! filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             throw new \Exception('Adresse e-mail invalide.');
         }
+        \Log::info('SubscriptionService store prix debug: ' . json_encode(['prix' => $data['prix'] ?? 'NOT SET', 'type' => gettype($data['prix'] ?? null)]));
         if (! isset($data['prix']) || ! is_numeric($data['prix']) || (float) $data['prix'] <= 0) {
             throw new \Exception('Prix invalide.');
         }
