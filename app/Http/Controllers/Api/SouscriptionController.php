@@ -215,8 +215,9 @@ class SouscriptionController extends Controller
                 $payload['otp_demo'] = $otp;
             }
             return response()->json($payload);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            error_log('DEBUG_SOUSCRIPTION_ERREUR_FATALE: ' . get_class($e) . ' - ' . $e->getMessage() . ' - File: ' . $e->getFile() . ':' . $e->getLine());
+            return response()->json(['error' => 'Erreur serveur: ' . $e->getMessage()], 500);
         }
     }
 
