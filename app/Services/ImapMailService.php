@@ -237,19 +237,41 @@ class ImapMailService
             $this->sendCommand($socket, "SELECT INBOX");
             $fetchResponse = $this->sendCommand($socket, "FETCH {$uid} (RFC822)");
 
+            // Extraire le littéral RFC822 de la réponse IMAP (format: RFC822 {size}\r\n...contenu...)
+            $literal = $this->extractRfc822Literal($fetchResponse);
+            if ($literal === '') {
+                Log::warning("ImapMailService: littéral RFC822 vide pour le message uid={$uid}");
+                return [];
+            }
+
             return [
-                'message_id' => $this->extractHeaderField($fetchResponse, 'Message-ID'),
-                'expediteur' => $this->extractHeaderField($fetchResponse, 'From'),
-                'destinataire' => $this->extractHeaderField($fetchResponse, 'To'),
-                'sujet' => $this->extractHeaderField($fetchResponse, 'Subject'),
-                'date_recue' => $this->extractHeaderField($fetchResponse, 'Date'),
-                'corps_texte' => $this->extractTextBody($fetchResponse),
-                'corps_html' => $this->extractHtmlBody($fetchResponse),
-                'pieces_jointes' => $this->extractAttachments($fetchResponse),
+                'message_id' => $this->extractHeaderField($literal, 'Message-ID'),
+                'expediteur' => $this->extractHeaderField($literal, 'From'),
+                'destinataire' => $this->extractHeaderField($literal, 'To'),
+                'sujet' => $this->extractHeaderField($literal, 'Subject'),
+                'date_recue' => $this->extractHeaderField($literal, 'Date'),
+                'corps_texte' => $this->extractTextBody($literal),
+                'corps_html' => $this->extractHtmlBody($literal),
+                'pieces_jointes' => $this->extractAttachments($literal),
             ];
         } finally {
             $this->disconnect($socket);
         }
+    }
+
+    /** Extrait le littéral RFC822 d'une réponse IMAP FETCH (format: RFC822 {size}\r\n...contenu...). */
+    private function extractRfc822Literal(string $response): string
+    {
+        // Trouver le pattern RFC822 {size}
+        if (!preg_match('/RFC822\s*\{(\d+)\}\r\n/', $response, $match)) {
+            return '';
+        }
+        $size = (int) $match[1];
+        $start = strpos($response, "\r\n", strpos($response, 'RFC822')) + 2;
+        if ($start === false || $start + $size > strlen($response)) {
+            return '';
+        }
+        return substr($response, $start, $size);
     }
 
     /** Extrait le corps texte d'une réponse RFC822 complète. */
