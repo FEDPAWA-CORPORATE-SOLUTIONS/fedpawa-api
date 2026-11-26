@@ -104,7 +104,7 @@ class ImapMailService
      *
      * @return array Tableau de messages avec uid, sujet, expediteur, date_recue, taille, lu
      */
-    public function listMessages(int $account = 1, int $limit = 50, string $mailbox = 'INBOX'): array
+    public function listMessages(int $account = 1, int $limit = 50, string $mailbox = 'INBOX', int $page = 1): array
     {
         $socket = $this->connect($account);
         if (!$socket) {
@@ -123,13 +123,21 @@ class ImapMailService
                 return [];
             }
 
-            // Trier par ID descendant (plus récent d'abord) et limiter
+            // Trier par ID descendant (plus récent d'abord)
             rsort($messageIds);
-            $messageIds = array_slice($messageIds, 0, $limit);
+
+            // Pagination : calculer l'offset et la tranche
+            $perPage = $limit;
+            $offset = ($page - 1) * $perPage;
+            $pageIds = array_slice($messageIds, $offset, $perPage);
+
+            if (empty($pageIds)) {
+                return [];
+            }
 
             $messages = [];
 
-            foreach ($messageIds as $msgNo) {
+            foreach ($pageIds as $msgNo) {
                 $fetchResponse = $this->sendCommand($socket, "FETCH {$msgNo} (BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)])");
                 $parsed = $this->parseFetchResponse($fetchResponse);
 

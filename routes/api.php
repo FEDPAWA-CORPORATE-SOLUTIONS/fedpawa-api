@@ -225,10 +225,10 @@ Route::prefix('v1')->group(function (): void {
                 $imap = app(ImapMailService::class);
                 return response()->json($imap->listMessages($account));
             })->whereNumber('account');
-            Route::get('/imap/messages/{account}/{mailbox}', function (int $account, string $mailbox) {
+            Route::get('/imap/messages/{account}/{mailbox}/{page?}', function (int $account, string $mailbox, int $page = 1) {
                 $imap = app(ImapMailService::class);
-                return response()->json($imap->listMessages($account, 50, $mailbox));
-            })->whereNumber('account');
+                return response()->json($imap->listMessages($account, 50, $mailbox, $page));
+            })->whereNumber('account')->whereNumber('page');
             Route::get('/imap/search/{account}/{query}', function (int $account, string $query) {
                 $imap = app(ImapMailService::class);
                 return response()->json($imap->searchMessages($account, $query));
