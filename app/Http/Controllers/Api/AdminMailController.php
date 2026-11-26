@@ -129,6 +129,18 @@ class AdminMailController extends Controller
         return response()->json(['marques_lus' => $n]);
     }
 
+    /** DELETE /api/v1/admin/mails/{id} — supprimer un mail reçu. */
+    public function destroy(int $id): JsonResponse
+    {
+        $mail = MailRecu::find($id);
+        if (! $mail) {
+            return response()->json(['error' => 'Mail introuvable'], 404);
+        }
+        $mail->delete();
+
+        return response()->json(['message' => 'Mail supprimé']);
+    }
+
     // =========================================================
     // ENVOI DE NOUVEAUX E-MAILS DEPUIS L'ADMIN
     // =========================================================

@@ -249,6 +249,7 @@ Route::prefix('v1')->group(function (): void {
                 }
                 return response()->json(['synced' => $synced, 'total' => count($messages)]);
             })->whereNumber('account');
+            Route::delete('/mails/{id}', [AdminMailController::class, 'destroy'])->whereNumber('id');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
