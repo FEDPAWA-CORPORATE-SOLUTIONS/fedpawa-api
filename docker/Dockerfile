@@ -46,6 +46,13 @@ RUN apt-get update \
     && docker-php-ext-install -j$(nproc) gmp bcmath \
     && rm -rf /var/lib/apt/lists/*
 
+# Extension IMAP pour la lecture des mails reçus (PrivateEmail).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libc-client-dev libkrb5-dev \
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    && docker-php-ext-install -j$(nproc) imap \
+    && rm -rf /var/lib/apt/lists/*
+
 # Garde-fou de build : l'image doit embarquer les extensions requises par
 # composer.json (dompdf -> dom/mbstring, SQLite -> pdo_sqlite) et OPcache.
 RUN php -m | grep -qx pdo_sqlite \
@@ -55,6 +62,7 @@ RUN php -m | grep -qx pdo_sqlite \
     && php -m | grep -q 'Zend OPcache' \
     && php -m | grep -qx gmp \
     && php -m | grep -qx bcmath \
+    && php -m | grep -qx imap \
     && /usr/bin/python3 --version
 
 COPY docker/php-fpm-www.conf /usr/local/etc/php-fpm.d/www.conf

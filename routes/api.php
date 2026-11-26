@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\PublicationLectureController;
 use App\Http\Controllers\Api\PortantSignController;
 use App\Http\Controllers\Api\ResendWebhookController;
 use App\Http\Middleware\CheckAdminRole;
+use App\Services\ImapMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -216,6 +217,14 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/mail-categories', [UserCategoryController::class, 'store']);
             Route::delete('/mail-categories/{id}', [UserCategoryController::class, 'destroy'])->whereNumber('id');
             Route::post('/mails/upload-piece-jointe', [AdminMailController::class, 'uploadPieceJointe']);
+            Route::get('/imap/test/{account}', function (int $account) {
+                $imap = app(ImapMailService::class);
+                return $imap->testConnection($account);
+            })->whereNumber('account');
+            Route::get('/imap/messages/{account}', function (int $account) {
+                $imap = app(ImapMailService::class);
+                return response()->json($imap->listMessages($account));
+            })->whereNumber('account');
         });
     });
     // ===== Fin section RESEND-MAIL (admin) =====
