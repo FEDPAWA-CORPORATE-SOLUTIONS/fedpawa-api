@@ -21,8 +21,41 @@ class ImapMailService
 
     public function __construct()
     {
+        $this->loadMailEnvIfNeeded();
+
         $this->host = env('IMAP_HOST', '');
         $this->port = (int) env('IMAP_PORT', 993);
+    }
+
+    /** Charge mail.env si les variables IMAP ne sont pas déjà dans l'environnement. */
+    private function loadMailEnvIfNeeded(): void
+    {
+        if (!empty(env('IMAP_HOST'))) {
+            return;
+        }
+
+        $mailEnvPath = base_path('mail.env');
+        if (!file_exists($mailEnvPath)) {
+            return;
+        }
+
+        $lines = file($mailEnvPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, '#') === 0 || strpos($line, '=') === false) {
+                continue;
+            }
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            // Supprimer les guillemets éventuels autour de la valeur
+            if (preg_match('/^["\'](.*)["\']$/', $value, $m)) {
+                $value = $m[1];
+            }
+            putenv("{$key}={$value}");
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
     }
 
     /**
