@@ -673,7 +673,9 @@ class ImapMailService
         if (preg_match($pattern, $response, $match)) {
             $value = trim($match[1]);
             // Décoder l'encodage MIME simple (ex: =?UTF-8?Q?...?=)
-            return $this->decodeMimeHeader($value);
+            $decoded = $this->decodeMimeHeader($value);
+            Log::debug('ImapMailService: extractHeaderField', ['field' => $field, 'raw' => $value, 'decoded' => $decoded]);
+            return $decoded;
         }
         return null;
     }
